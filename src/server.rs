@@ -15,6 +15,45 @@ use tokio::sync::Semaphore;
 
 const MAX_BODY: usize = 64 * 1024 * 1024; // 64 МБ
 
+/// Верхняя граница одновременных OCR-задач (env RUSTOCR_MAX_CONC, 1..=64).
+fn max_concurrency() -> usize {
+    std::env::var("RUSTOCR_MAX_CONC")
+        .ok()
+        .and_then(|v| v.parse::<usize>().ok())
+        .unwrap_or_else(|| {
+            std::thread::available_parallelism()
+                .map(|n| n.get())
+                .unwrap_or(4)
+        })
+        .clamp(1, 64)
+}
+
+/// Проверить API-ключ: сервер требует его только если задан RUSTOCR_API_KEY.
+fn check_api_key(headers: &axum::http::HeaderMap) -> bool {
+    let key = match std::env::var("RUSTOCR_API_KEY") {
+        Ok(k) => k,
+        Err(_) => return true, // ключ не задан — аутентификация выключена
+    };
+    if key.is_empty() {
+        return true;
+    }
+    match headers.get("x-api-key").and_then(|v| v.to_str().ok()) {
+        Some(got) => eq_const_time(got.as_bytes(), key.as_bytes()),
+        None => false,
+    }
+}
+
+/// Сравнение без досрочного выхода (не отдаёт длину/префикс по времени).
+fn eq_const_time(a: &[u8], b: &[u8]) -> bool {
+    let mut diff: u64 = (a.len() ^ b.len()) as u64;
+    for i in 0..a.len().max(b.len()) {
+        let x = *a.get(i).unwrap_or(&0);
+        let y = *b.get(i).unwrap_or(&0);
+        diff |= (x ^ y) as u64;
+    }
+    diff == 0
+}
+
 #[derive(Clone)]
 pub struct AppState {
     pub engine: Arc<OcrEngine>,
@@ -22,13 +61,11 @@ pub struct AppState {
 }
 
 pub async fn serve(engine: Arc<OcrEngine>, port: u16) -> anyhow::Result<()> {
+    let conc = max_concurrency();
+    eprintln!("Одновременных OCR-задач: {} (RUSTOCR_MAX_CONC)", conc);
     let state = AppState {
         engine,
-        sem: Arc::new(Semaphore::new(
-            std::thread::available_parallelism()
-                .map(|n| n.get())
-                .unwrap_or(4),
-        )),
+        sem: Arc::new(Semaphore::new(conc)),
     };
     let app = Router::new()
         .route("/", get(index))
@@ -58,6 +95,12 @@ async fn health() -> impl IntoResponse {
 
 /// POST /ocr — сырые байты картинки ИЛИ multipart/form-data с полем file.
 async fn ocr_any(State(st): State<AppState>, req: Request) -> Response {
+    if !check_api_key(req.headers()) {
+        return err(
+            StatusCode::UNAUTHORIZED,
+            "требуется заголовок X-API-Key".to_string(),
+        );
+    }
     let ct = req
         .headers()
         .get(header::CONTENT_TYPE)
@@ -119,7 +162,17 @@ struct Base64Req {
 }
 
 /// POST /ocr/json — {"image": "<base64 или data-url>"}.
-async fn ocr_json(State(st): State<AppState>, body: String) -> Response {
+async fn ocr_json(
+    State(st): State<AppState>,
+    headers: axum::http::HeaderMap,
+    body: String,
+) -> Response {
+    if !check_api_key(&headers) {
+        return err(
+            StatusCode::UNAUTHORIZED,
+            "требуется заголовок X-API-Key".to_string(),
+        );
+    }
     let req: Base64Req = match serde_json::from_str(&body) {
         Ok(v) => v,
         Err(e) => return err(StatusCode::BAD_REQUEST, format!("JSON: {}", e)),
@@ -144,28 +197,46 @@ async fn process_image(st: AppState, bytes: Bytes) -> Response {
     // PDF? → растеризуем и читаем страницу за страницей
     if crate::pdf::is_pdf_bytes(&bytes) {
         let res = tokio::task::spawn_blocking(move || -> anyhow::Result<serde_json::Value> {
-            let tmp = std::env::temp_dir().join(format!("rustocr-upload-{}.pdf", std::process::id()));
-            std::fs::write(&tmp, &bytes).map_err(|e| anyhow::anyhow!("запись временного файла: {}", e))?;
-            let dpi = std::env::var("RUSTOCR_DPI")
-                .ok()
-                .and_then(|v| v.parse().ok())
-                .unwrap_or(crate::pdf::DEFAULT_DPI);
-            let t0 = std::time::Instant::now();
-            let images = crate::pdf::render_pdf(&tmp, dpi);
-            let _ = std::fs::remove_file(&tmp);
-            let images = images?;
-            let render_ms = t0.elapsed().as_millis() as u64;
-            let t1 = std::time::Instant::now();
-            let mut pages = Vec::with_capacity(images.len());
-            for (n, img) in images.into_iter().enumerate() {
-                let r = engine.recognize(&img)?;
-                let mut v = r.to_json();
-                v["page"] = serde_json::json!(n + 1);
-                pages.push(v);
+            // уникальная временная папка на запрос: параллельные загрузки
+            // не сталкиваются, уборка гарантирована при любом исходе
+            let job = crate::pdf::PdfRender::new()?;
+            let pdf_path = job.pdf_path();
+            std::fs::write(&pdf_path, &bytes)
+                .map_err(|e| anyhow::anyhow!("запись временного файла: {}", e))?;
+            // число страниц — до рендера, чтобы сразу отвергнуть гиганта
+            let n = crate::pdf::page_count(&pdf_path)?;
+            if n > crate::pdf::MAX_PAGES {
+                anyhow::bail!("в PDF {} страниц — максимум {}", n, crate::pdf::MAX_PAGES);
             }
+            let dpi = crate::pdf::dpi_from_env();
+            let t0 = std::time::Instant::now();
+            let t1 = t0;
+            let mut pages = Vec::with_capacity(n);
+            let mut skipped = 0usize;
+            // рендер порциями: память не растёт с толщиной PDF
+            for first in (1..=n as u32).step_by(crate::pdf::CHUNK_PAGES) {
+                let last = (first + crate::pdf::CHUNK_PAGES as u32 - 1).min(n as u32);
+                let images = job.render_range(&pdf_path, first, last, dpi)?;
+                for (k, img) in images.into_iter().enumerate() {
+                    let page_no = first as usize + k;
+                    let r = engine.recognize(&img)?;
+                    skipped += r.skipped;
+                    let mut v = r.to_json();
+                    v["page"] = serde_json::json!(page_no);
+                    pages.push(v);
+                }
+            }
+            let render_ms = t0.elapsed().as_millis() as u64;
             let ocr_ms = t1.elapsed().as_millis() as u64;
+            let text = pages
+                .iter()
+                .map(|p| p["text"].as_str().unwrap_or(""))
+                .collect::<Vec<_>>()
+                .join("\n\n");
             Ok(serde_json::json!({
                 "pages": pages,
+                "text": text,
+                "skipped_fragments": skipped,
                 "timing_ms": {"render": render_ms, "ocr": ocr_ms,
                                  "total": render_ms + ocr_ms},
             }))
@@ -179,8 +250,8 @@ async fn process_image(st: AppState, bytes: Bytes) -> Response {
         };
     }
     let res = tokio::task::spawn_blocking(move || -> anyhow::Result<crate::pipeline::OcrResult> {
-        let img = image::load_from_memory(&bytes)
-            .map_err(|e| anyhow::anyhow!("не удалось декодировать картинку: {}", e))?;
+        // лимиты декодирования — защита от «декомпрессионной бомбы»
+        let img = crate::imgio::decode_bytes(&bytes)?;
         engine.recognize(&img.to_rgb8())
     })
     .await;
@@ -194,6 +265,26 @@ async fn process_image(st: AppState, bytes: Bytes) -> Response {
 
 fn err(status: StatusCode, msg: String) -> Response {
     (status, Json(json!({"error": msg}))).into_response()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn const_time_eq() {
+        assert!(eq_const_time("секрет".as_bytes(), "секрет".as_bytes()));
+        assert!(!eq_const_time("секрет".as_bytes(), "секреT".as_bytes()));
+        assert!(!eq_const_time(b"abc", b"abcd"));
+        assert!(!eq_const_time(b"abcd", b"abc"));
+        assert!(eq_const_time(b"", b""));
+    }
+
+    #[test]
+    fn concurrency_in_range() {
+        let v = max_concurrency();
+        assert!((1..=64).contains(&v), "RUSTOCR_MAX_CONC вне диапазона: {}", v);
+    }
 }
 
 const INDEX_HTML: &str = r#"<!doctype html>

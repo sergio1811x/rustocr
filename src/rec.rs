@@ -27,6 +27,7 @@ pub struct RecBatch {
 
 /// Подготовить пачку кропов: высота 48, ширина пропорционально,
 /// паддинг нулями до общей ширины пачки (как max_wh_ratio в PaddleOCR).
+/// Принимает ссылки: под-пачки нарезаются без клонов картинок.
 pub fn preprocess_batch(crops: &[&RgbImage]) -> RecBatch {
     let rws: Vec<u32> = crops
         .iter()

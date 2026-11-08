@@ -5,10 +5,33 @@ use crate::geom::{
     Pt,
 };
 use image::RgbImage;
+use std::sync::OnceLock;
 
-pub const DET_THRESH: f32 = 0.3; // порог бинаризации карты вероятностей
-pub const BOX_THRESH: f32 = 0.6; // минимальная средняя уверенность блока
-pub const UNCLIP_RATIO: f32 = 1.5; // насколько расширить блок вокруг текста
+/// Порог бинаризации карты вероятностей (env RUSTOCR_DET_THRESH).
+pub fn det_thresh() -> f32 {
+    static V: OnceLock<f32> = OnceLock::new();
+    *V.get_or_init(|| env_f32("RUSTOCR_DET_THRESH", 0.3))
+}
+
+/// Минимальная средняя уверенность блока (env RUSTOCR_BOX_THRESH).
+pub fn box_thresh() -> f32 {
+    static V: OnceLock<f32> = OnceLock::new();
+    *V.get_or_init(|| env_f32("RUSTOCR_BOX_THRESH", 0.6))
+}
+
+/// Насколько расширить блок вокруг текста (env RUSTOCR_UNCLIP).
+pub fn unclip_ratio() -> f32 {
+    static V: OnceLock<f32> = OnceLock::new();
+    *V.get_or_init(|| env_f32("RUSTOCR_UNCLIP", 1.5))
+}
+
+fn env_f32(name: &str, default: f32) -> f32 {
+    std::env::var(name)
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(default)
+        .clamp(0.05, 5.0)
+}
 
 pub struct DetInput {
     pub data: Vec<f32>,
@@ -70,8 +93,9 @@ pub fn postprocess(prob: &ProbMap, ratio: f32, orig_w: u32, orig_h: u32) -> Vec<
     let (w, h) = (prob.w, prob.h);
     let n = w * h;
     let mut mask = vec![false; n];
+    let thr = det_thresh();
     for i in 0..n {
-        mask[i] = prob.data[i] > DET_THRESH;
+        mask[i] = prob.data[i] > thr;
     }
     let mut visited = vec![false; n];
     let mut boxes: Vec<DetBox> = Vec::new();
@@ -132,7 +156,7 @@ pub fn postprocess(prob: &ProbMap, ratio: f32, orig_w: u32, orig_h: u32) -> Vec<
             }
         }
         let score = sum / (((y1 - y0 + 1) * (x1 - x0 + 1)) as f32);
-        if score < BOX_THRESH {
+        if score < box_thresh() {
             continue;
         }
         let hull = convex_hull(&pts);
@@ -142,7 +166,7 @@ pub fn postprocess(prob: &ProbMap, ratio: f32, orig_w: u32, orig_h: u32) -> Vec<
         if area < 1.0 || peri < 1.0 {
             continue;
         }
-        let d = area * UNCLIP_RATIO / peri;
+        let d = area * unclip_ratio() / peri;
         let mut quad = expand_rect(&rect, d);
         // обратно в координаты исходной картинки
         for p in quad.iter_mut() {

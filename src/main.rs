@@ -4,6 +4,7 @@
 
 mod det;
 mod geom;
+mod imgio;
 mod pdf;
 mod pipeline;
 mod rec;
@@ -81,8 +82,10 @@ async fn main() -> Result<()> {
     let mut cfg = CliCfg {
         json_out: false,
         xlsx: None,
-        dpi: pdf::DEFAULT_DPI,
-        jobs: None,
+        dpi: pdf::dpi_from_env(),
+        jobs: std::env::var("RUSTOCR_JOBS")
+            .ok()
+            .and_then(|v| v.parse().ok()),
     };
     let mut i = 0;
     while i < args.len() {
@@ -103,7 +106,7 @@ async fn main() -> Result<()> {
             }
             "--dpi" => {
                 if let Some(v) = args.get(i + 1) {
-                    cfg.dpi = v.parse().unwrap_or(pdf::DEFAULT_DPI);
+                    cfg.dpi = pdf::clamp_dpi(v.parse().unwrap_or(pdf::DEFAULT_DPI));
                 }
                 i += 1;
             }
@@ -204,7 +207,8 @@ fn cli(
             );
             xlsx_pages.push((images, results));
         } else {
-            let img = image::open(path)?.to_rgb8();
+            // лимиты декодирования — как в HTTP-сервере
+            let img = crate::imgio::open_file(path)?.to_rgb8();
             let res = engine.recognize(&img)?;
             if cfg.json_out {
                 let mut v = res.to_json();
@@ -213,8 +217,9 @@ fn cli(
             } else {
                 println!("{}", res.text);
                 eprintln!(
-                    "-- {}×{} · детекция {} мс · чтение {} мс · всего {} мс",
-                    res.width, res.height, res.det_ms, res.rec_ms, res.total_ms
+                    "-- {}×{} · детекция {} мс · чтение {} мс · всего {} мс{}",
+                    res.width, res.height, res.det_ms, res.rec_ms, res.total_ms,
+                    if res.skipped > 0 { format!(" · ПОТЕРЯНО ФРАГМЕНТОВ: {}", res.skipped) } else { String::new() }
                 );
             }
             xlsx_pages.push((std::sync::Arc::new(vec![img]), vec![res]));

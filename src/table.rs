@@ -26,29 +26,35 @@ pub fn write_xlsx(
             .set_name(name.as_str())
             .with_context(|| format!("имя листа {}", name))?;
         let img = images.get(i);
-        write_page(engine, img, ws, r);
+        write_page(engine, img, ws, r)
+            .with_context(|| format!("страница {}", i + 1))?;
     }
     wb.save(path)
         .with_context(|| format!("запись {}", path.display()))?;
     Ok(results.len())
 }
 
+/// Ошибки записи ячеек не игнорируем: неполный файл без сообщения —
+/// хуже явной ошибки.
 fn write_page(
     engine: &OcrEngine,
     img: Option<&image::RgbImage>,
     ws: &mut rust_xlsxwriter::Worksheet,
     r: &OcrResult,
-) {
+) -> Result<()> {
     if let Some(grid) = page_grid(engine, img, r) {
         for (row, col, text) in grid {
-            let _ = ws.write(row as u32, col as u16, text.as_str());
+            ws.write(row as u32, col as u16, text.as_str())
+                .with_context(|| format!("ячейка R{}C{}", row, col))?;
         }
     } else {
         // не таблица: по строке на лист-строку
         for (i, line) in r.text.lines().enumerate() {
-            let _ = ws.write(i as u32, 0u16, line);
+            ws.write(i as u32, 0u16, line)
+                .with_context(|| format!("строка текста {}", i))?;
         }
     }
+    Ok(())
 }
 
 /// Геометрия блока: (x-центр, y-центр, ширина, высота).
