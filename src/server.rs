@@ -1,6 +1,6 @@
 //! HTTP-сервер (Axum): /ocr, /ocr/json, /health, демо-страница на /.
 
-use crate::pipeline::{OcrEngine, OcrResult};
+use crate::pipeline::OcrEngine;
 use axum::body::Bytes;
 use axum::extract::{FromRequest, Multipart, Request, State};
 use axum::http::{header, StatusCode};
@@ -141,6 +141,43 @@ async fn process_image(st: AppState, bytes: Bytes) -> Response {
         Ok(p) => p,
         Err(_) => return err(StatusCode::INTERNAL_SERVER_ERROR, "semaphore".into()),
     };
+    // PDF? → растеризуем и читаем страницу за страницей
+    if crate::pdf::is_pdf_bytes(&bytes) {
+        let res = tokio::task::spawn_blocking(move || -> anyhow::Result<serde_json::Value> {
+            let tmp = std::env::temp_dir().join(format!("rustocr-upload-{}.pdf", std::process::id()));
+            std::fs::write(&tmp, &bytes).map_err(|e| anyhow::anyhow!("запись временного файла: {}", e))?;
+            let dpi = std::env::var("RUSTOCR_DPI")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(crate::pdf::DEFAULT_DPI);
+            let t0 = std::time::Instant::now();
+            let images = crate::pdf::render_pdf(&tmp, dpi);
+            let _ = std::fs::remove_file(&tmp);
+            let images = images?;
+            let render_ms = t0.elapsed().as_millis() as u64;
+            let t1 = std::time::Instant::now();
+            let mut pages = Vec::with_capacity(images.len());
+            for (n, img) in images.into_iter().enumerate() {
+                let r = engine.recognize(&img)?;
+                let mut v = r.to_json();
+                v["page"] = serde_json::json!(n + 1);
+                pages.push(v);
+            }
+            let ocr_ms = t1.elapsed().as_millis() as u64;
+            Ok(serde_json::json!({
+                "pages": pages,
+                "timing_ms": {"render": render_ms, "ocr": ocr_ms,
+                                 "total": render_ms + ocr_ms},
+            }))
+        })
+        .await;
+        drop(permit);
+        return match res {
+            Ok(Ok(v)) => Json(v).into_response(),
+            Ok(Err(e)) => err(StatusCode::UNPROCESSABLE_ENTITY, format!("{}", e)),
+            Err(e) => err(StatusCode::INTERNAL_SERVER_ERROR, format!("worker: {}", e)),
+        };
+    }
     let res = tokio::task::spawn_blocking(move || -> anyhow::Result<crate::pipeline::OcrResult> {
         let img = image::load_from_memory(&bytes)
             .map_err(|e| anyhow::anyhow!("не удалось декодировать картинку: {}", e))?;
@@ -149,43 +186,10 @@ async fn process_image(st: AppState, bytes: Bytes) -> Response {
     .await;
     drop(permit);
     match res {
-        Ok(Ok(r)) => Json(result_to_json(&r)).into_response(),
+        Ok(Ok(r)) => Json(r.to_json()).into_response(),
         Ok(Err(e)) => err(StatusCode::UNPROCESSABLE_ENTITY, format!("{}", e)),
         Err(e) => err(StatusCode::INTERNAL_SERVER_ERROR, format!("worker: {}", e)),
     }
-}
-
-fn result_to_json(r: &OcrResult) -> serde_json::Value {
-    let blocks: Vec<serde_json::Value> = r
-        .blocks
-        .iter()
-        .map(|b| {
-            let xs = [b.quad[0].x, b.quad[1].x, b.quad[2].x, b.quad[3].x];
-            let ys = [b.quad[0].y, b.quad[1].y, b.quad[2].y, b.quad[3].y];
-            let x0 = xs.iter().cloned().fold(f32::INFINITY, f32::min);
-            let y0 = ys.iter().cloned().fold(f32::INFINITY, f32::min);
-            let x1 = xs.iter().cloned().fold(f32::NEG_INFINITY, f32::max);
-            let y1 = ys.iter().cloned().fold(f32::NEG_INFINITY, f32::max);
-            json!({
-                "text": b.text,
-                "confidence": (b.confidence * 1000.0).round() / 1000.0,
-                "lang": b.lang,
-                "box": [x0.round() as i32, y0.round() as i32,
-                        (x1 - x0).round() as i32, (y1 - y0).round() as i32],
-                "quad": [
-                    b.quad[0].x, b.quad[0].y, b.quad[1].x, b.quad[1].y,
-                    b.quad[2].x, b.quad[2].y, b.quad[3].x, b.quad[3].y,
-                ],
-            })
-        })
-        .collect();
-    json!({
-        "text": r.text,
-        "width": r.width,
-        "height": r.height,
-        "blocks": blocks,
-        "timing_ms": {"det": r.det_ms, "rec": r.rec_ms, "total": r.total_ms},
-    })
 }
 
 fn err(status: StatusCode, msg: String) -> Response {
@@ -209,7 +213,7 @@ const INDEX_HTML: &str = r#"<!doctype html>
 </style></head><body>
 <h1>⚡ RustOCR</h1>
 <p class="sub">Русский + английский, PP-OCRv5 на Rust. Перетащи картинку или кликни по рамке.</p>
-<div id="drop">📷 PNG / JPEG — брось сюда или выбери файл<input type="file" id="f" hidden accept="image/*"></div>
+<div id="drop">📷 PNG / JPEG / PDF — брось сюда или выбери файл<input type="file" id="f" hidden accept="image/*,application/pdf"></div>
 <canvas id="cv"></canvas>
 <p class="ms" id="ms"></p>
 <pre id="out">Здесь появится распознанный текст…</pre>
@@ -229,6 +233,14 @@ async function go(file){
     headers:{'Content-Type':file.type||'application/octet-stream'}});
   const j=await r.json();
   if(!r.ok){document.getElementById('out').textContent='Ошибка: '+(j.error||r.status);return}
+  if(j.pages){ // PDF: несколько страниц
+   document.getElementById('out').textContent=j.pages.map(p=>
+    '=== Страница '+p.page+' ===\n'+(p.text||'(текст не найден)')).join('\n');
+   document.getElementById('ms').textContent=
+    'страниц: '+j.pages.length+' · рендер '+j.timing_ms.render+' мс · OCR '+j.timing_ms.ocr+' мс';
+   document.getElementById('cv').style.display='none';
+   return;
+  }
   document.getElementById('out').textContent=j.text||'(текст не найден)';
   document.getElementById('ms').textContent=
     'детекция '+j.timing_ms.det+' мс · чтение '+j.timing_ms.rec+' мс · всего '+j.timing_ms.total+' мс · блоков: '+j.blocks.length;

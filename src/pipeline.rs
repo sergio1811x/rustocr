@@ -21,7 +21,7 @@ const ROT_MARGIN: f32 = 0.10; // повёрнутый вариант долже�
 
 /// Режим языка: авто (обе модели), только русский, только английский.
 #[derive(Clone, Copy, PartialEq)]
-enum LangMode {
+pub enum LangMode {
     Auto,
     Ru,
     En,
@@ -45,6 +45,7 @@ pub struct Block {
     pub quad: [Pt; 4],
 }
 
+#[derive(Clone)]
 pub struct OcrResult {
     pub width: u32,
     pub height: u32,
@@ -53,6 +54,30 @@ pub struct OcrResult {
     pub det_ms: u64,
     pub rec_ms: u64,
     pub total_ms: u64,
+}
+
+/// Настройки движка. Заполняются из env-переменных, но при обработке
+/// PDF можно создать несколько движков с ограниченными потоками.
+pub struct EngineOptions {
+    pub models_dir: PathBuf,
+    pub lang: LangMode,
+    pub det_limit: u32,
+    /// Лимит intra-op потоков ONNX Runtime (None = все ядра).
+    pub intra_threads: Option<usize>,
+}
+
+impl EngineOptions {
+    pub fn from_env() -> Self {
+        Self {
+            models_dir: models_dir(),
+            lang: LangMode::from_env(),
+            det_limit: std::env::var("RUSTOCR_DET_MAX")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(960),
+            intra_threads: None,
+        }
+    }
 }
 
 pub struct OcrEngine {
@@ -73,8 +98,10 @@ pub struct OcrEngine {
 }
 
 impl OcrEngine {
-    /// Загрузить движок из каталога models/ (или RUSTOCR_MODELS).
-    pub fn load(models_dir: &Path) -> Result<Self> {
+    /// Загрузить движок с заданными настройками. Окружение ONNX Runtime
+    /// создаётся один раз на процесс и передаётся сюда (engine хранит клон).
+    pub fn load(opts: &EngineOptions, env: &Environment) -> Result<Self> {
+        let models_dir = &opts.models_dir;
         let det_path = models_dir.join("det.onnx");
         let rec_cyr_path = models_dir.join("rec_cyrillic.onnx");
         let rec_lat_path = models_dir.join("rec_latin.onnx");
@@ -83,28 +110,23 @@ impl OcrEngine {
                 anyhow::bail!("модель не найдена: {}", p.display());
             }
         }
-        let env = ort::init()
-            .build()
-            .context("инициализация ONNX Runtime (проверьте ORT_DYLIB_PATH)")?;
-        let det = Session::builder(&env)
-            .context("builder детектора")?
-            .commit_from_file(&det_path)
-            .with_context(|| format!("загрузка {}", det_path.display()))?;
-        let rec_cyr = Session::builder(&env)
-            .context("builder распознавателя (кириллица)")?
-            .commit_from_file(&rec_cyr_path)
-            .with_context(|| format!("загрузка {}", rec_cyr_path.display()))?;
-        let rec_lat = Session::builder(&env)
-            .context("builder распознавателя (латиница)")?
-            .commit_from_file(&rec_lat_path)
-            .with_context(|| format!("загрузка {}", rec_lat_path.display()))?;
+        let build_session = |path: &Path| -> Result<Session> {
+            let mut b = Session::builder(env).context("builder сессии")?;
+            if let Some(n) = opts.intra_threads {
+                b = b.with_intra_threads(n).map_err(|e| {
+                    anyhow::anyhow!("настройка intra-op потоков: {}", e)
+                })?;
+            }
+            b.commit_from_file(path)
+                .with_context(|| format!("загрузка {}", path.display()))
+        };
+        let det = build_session(&det_path)?;
+        let rec_cyr = build_session(&rec_cyr_path)?;
+        let rec_lat = build_session(&rec_lat_path)?;
         let table_cyr = rec::load_table(&models_dir.join("cyrillic_dict.txt"))?;
         let table_lat = rec::load_table(&models_dir.join("latin_dict.txt"))?;
-        let det_limit: u32 = std::env::var("RUSTOCR_DET_MAX")
-            .ok()
-            .and_then(|v| v.parse().ok())
-            .unwrap_or(960);
-        let lang_mode = LangMode::from_env();
+        let lang_mode = opts.lang;
+        let det_limit = opts.det_limit;
         let io = |s: &Session| -> (String, String) {
             (
                 s.inputs()[0].name().to_string(),
@@ -115,7 +137,7 @@ impl OcrEngine {
         let (rec_cyr_in, rec_cyr_out) = io(&rec_cyr);
         let (rec_lat_in, rec_lat_out) = io(&rec_lat);
         Ok(Self {
-            _env: env,
+            _env: env.clone(),
             det: Mutex::new(det),
             rec_cyr: Mutex::new(rec_cyr),
             rec_lat: Mutex::new(rec_lat),
@@ -196,12 +218,16 @@ impl OcrEngine {
             ),
         };
 
-        // 4) Запасная модель для неуверенных строк (только в авто-режиме)
+        // 4) Запасная модель для неуверенных строк (только в авто-режиме).
+        //    Строки из цифр и знаков пропускаем: обе модели читают их
+        //    одинаково — перечитывание только тратит время.
         if self.lang_mode == LangMode::Auto {
             let weak: Vec<usize> = results
                 .iter()
                 .enumerate()
-                .filter(|(_, (t, c, _))| *c < LATIN_FALLBACK_CONF || t.trim().is_empty())
+                .filter(|(_, (t, c, _))| {
+                    (t.trim().is_empty() || *c < LATIN_FALLBACK_CONF) && !is_digitish(t)
+                })
                 .map(|(i, _)| i)
                 .collect();
             if !weak.is_empty() {
@@ -254,6 +280,43 @@ impl OcrEngine {
             rec_ms,
             total_ms,
         })
+    }
+
+    /// Распознать текст в заданных областях картинки. Нужно для разбора
+    /// таблиц: склеенный блок режется на части по границам колонок и
+    /// перечитывается. Выравнивание результата — по индексам областей.
+    pub fn recognize_quads(&self, img: &RgbImage, quads: &[[Pt; 4]]) -> Vec<Option<(String, f32)>> {
+        let mut idxs: Vec<usize> = Vec::with_capacity(quads.len());
+        let mut crops: Vec<RgbImage> = Vec::with_capacity(quads.len());
+        for (i, q) in quads.iter().enumerate() {
+            if let Some(c) = crop_quad(img, q) {
+                idxs.push(i);
+                crops.push(c);
+            }
+        }
+        let run = match self.lang_mode {
+            LangMode::En => self.run_rec_batch(
+                &self.rec_lat,
+                &self.table_lat,
+                &self.rec_lat_in,
+                &self.rec_lat_out,
+                &crops,
+            ),
+            _ => self.run_rec_batch(
+                &self.rec_cyr,
+                &self.table_cyr,
+                &self.rec_cyr_in,
+                &self.rec_cyr_out,
+                &crops,
+            ),
+        };
+        let mut out: Vec<Option<(String, f32)>> = vec![None; quads.len()];
+        for (k, &i) in idxs.iter().enumerate() {
+            if let Some((text, conf, _)) = run.get(k) {
+                out[i] = Some((text.clone(), *conf));
+            }
+        }
+        out
     }
 
     fn run_det(&self, data: &[f32], shape: [usize; 4]) -> Result<ProbMap> {
@@ -310,8 +373,30 @@ impl OcrEngine {
         order.sort_by(|&a, &b| ratios[a].partial_cmp(&ratios[b]).unwrap_or(std::cmp::Ordering::Equal));
 
         const CHUNK: usize = 16;
+        // Порции собираем не просто по счёту, а по похожей ширине: строки
+        // внутри порции паддятся до самой широкой, и «мешанина» из узкой
+        // и широкой строки жгла процессор впустую.
+        let mut chunks: Vec<Vec<usize>> = Vec::new();
+        let mut cur: Vec<usize> = Vec::with_capacity(CHUNK);
+        let (mut rmin, mut rmax) = (f32::INFINITY, 0.0f32);
+        for &idx in order.iter() {
+            let r = ratios[idx];
+            let too_wide = !cur.is_empty()
+                && (cur.len() >= CHUNK || r > rmin * 1.7 || r * 1.7 < rmax);
+            if too_wide {
+                chunks.push(std::mem::take(&mut cur));
+                rmin = f32::INFINITY;
+                rmax = 0.0;
+            }
+            cur.push(idx);
+            rmin = rmin.min(r);
+            rmax = rmax.max(r);
+        }
+        if !cur.is_empty() {
+            chunks.push(cur);
+        }
         let mut decoded: Vec<Option<(String, f32)>> = vec![None; n_total];
-        for chunk in order.chunks(CHUNK) {
+        for chunk in &chunks {
             let batch_crops: Vec<&RgbImage> = chunk.iter().map(|&i| &crops[i]).collect();
             let batch: RecBatch = rec::preprocess_batch(&batch_crops);
             let run = (|| -> Result<Vec<(String, f32)>> {
@@ -359,7 +444,11 @@ impl OcrEngine {
 
 /// Вырезать блок из картинки (перспектива → прямой прямоугольник).
 fn crop_box(img: &RgbImage, b: &DetBox) -> Option<RgbImage> {
-    let q = order_quad(&b.quad);
+    crop_quad(img, &b.quad)
+}
+
+fn crop_quad(img: &RgbImage, q: &[Pt; 4]) -> Option<RgbImage> {
+    let q = order_quad(q);
     let w_top = crate::geom::dist(q[0], q[1]);
     let w_bot = crate::geom::dist(q[2], q[3]);
     let h_left = crate::geom::dist(q[0], q[3]);
@@ -370,6 +459,42 @@ fn crop_box(img: &RgbImage, b: &DetBox) -> Option<RgbImage> {
         return None;
     }
     Some(warp_quad(img, &q, w.min(4096), h.min(1024)))
+}
+
+impl OcrResult {
+    /// JSON-представление результата (общее для CLI и HTTP-сервера).
+    pub fn to_json(&self) -> serde_json::Value {
+        let blocks: Vec<serde_json::Value> = self
+            .blocks
+            .iter()
+            .map(|b| {
+                let xs = [b.quad[0].x, b.quad[1].x, b.quad[2].x, b.quad[3].x];
+                let ys = [b.quad[0].y, b.quad[1].y, b.quad[2].y, b.quad[3].y];
+                let x0 = xs.iter().cloned().fold(f32::INFINITY, f32::min);
+                let y0 = ys.iter().cloned().fold(f32::INFINITY, f32::min);
+                let x1 = xs.iter().cloned().fold(f32::NEG_INFINITY, f32::max);
+                let y1 = ys.iter().cloned().fold(f32::NEG_INFINITY, f32::max);
+                serde_json::json!({
+                    "text": b.text,
+                    "confidence": (b.confidence * 1000.0).round() / 1000.0,
+                    "lang": b.lang,
+                    "box": [x0.round() as i32, y0.round() as i32,
+                            (x1 - x0).round() as i32, (y1 - y0).round() as i32],
+                    "quad": [
+                        b.quad[0].x, b.quad[0].y, b.quad[1].x, b.quad[1].y,
+                        b.quad[2].x, b.quad[2].y, b.quad[3].x, b.quad[3].y,
+                    ],
+                })
+            })
+            .collect();
+        serde_json::json!({
+            "text": self.text,
+            "width": self.width,
+            "height": self.height,
+            "blocks": blocks,
+            "timing_ms": {"det": self.det_ms, "rec": self.rec_ms, "total": self.total_ms},
+        })
+    }
 }
 
 /// Средняя уверенность по непустым блокам.
@@ -385,6 +510,22 @@ fn avg_confidence(r: &OcrResult) -> f32 {
     } else {
         vals.iter().sum::<f32>() / vals.len() as f32
     }
+}
+
+/// Похоже ли строка на «чисто цифровую» (цифры/знаки/пробелы):
+/// таким строкам вторая модель ничего не добавит.
+fn is_digitish(text: &str) -> bool {
+    let mut alnum = 0usize;
+    let mut digits = 0usize;
+    for ch in text.chars() {
+        if ch.is_alphanumeric() {
+            alnum += 1;
+            if ch.is_numeric() {
+                digits += 1;
+            }
+        }
+    }
+    alnum > 0 && (digits as f32 / alnum as f32) >= 0.8
 }
 
 /// Язык строки по составу символов.
