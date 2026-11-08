@@ -58,10 +58,14 @@ fn normalize_units(text: &str) -> String {
 /// Замена «букв-двойников цифр» рядом с цифрами: б→6, З→3, О/о→0.
 /// OCR на мелком шрифте путает их («б000» вместо «6000»). Заменяем букву
 /// только если сосед — цифра: слова «под», «Зоя» не страдают.
+/// Сосед считается и через один разделитель: «1-Зсорт» → «1-3сорт»
+/// (дефис режет токен, но по факту это цифра диапазона; на 14 реальных
+/// сметах такая правка вернула 100+ «потерянных» чисел в КД-документах).
 fn normalize_digit_lookalikes(text: &str) -> String {
     let chars: Vec<char> = text.chars().collect();
     let n = chars.len();
     let is_d = |c: char| c.is_ascii_digit();
+    let sep = |c: char| matches!(c, '-' | '–' | '—' | '/');
     let mut out = String::with_capacity(text.len());
     let mut i = 0;
     // токен = буквы+цифры подряд
@@ -73,18 +77,26 @@ fn normalize_digit_lookalikes(text: &str) -> String {
             }
             let tok = &chars[start..i];
             let has_digit = tok.iter().any(|&c| is_d(c));
+            // «цифра-разделитель-токен…»: 1-Зсорт, 2/Зм, 100-Зшт
+            let digit_before_sep =
+                start >= 2 && sep(chars[start - 1]) && is_d(chars[start - 2]);
             if has_digit {
                 for (k, &c) in tok.iter().enumerate() {
                     let prev_d = k > 0 && is_d(tok[k - 1]);
                     let next_d = k + 1 < tok.len() && is_d(tok[k + 1]);
+                    let cross = k == 0 && digit_before_sep;
                     let rep = match c {
                         'б' if next_d => Some('6'),
-                        'З' if prev_d || next_d => Some('3'),
+                        'З' if prev_d || next_d || cross => Some('3'),
                         'О' | 'о' if prev_d || next_d => Some('0'),
                         _ => None,
                     };
                     out.push(rep.unwrap_or(c));
                 }
+            } else if digit_before_sep && tok[0] == 'З' {
+                // токен без своих цифр, но открывается З после «цифра-дефис»
+                out.push('3');
+                out.extend(tok[1..].iter());
             } else {
                 out.extend(tok.iter());
             }
@@ -94,6 +106,17 @@ fn normalize_digit_lookalikes(text: &str) -> String {
         }
     }
     out
+}
+
+/// Одиночный символ О/о/O/o — это цифра 0 в изолированной ячейке таблицы:
+/// без соседей модель не отличает букву от цифры. В реальных сметах
+/// (РувитСтрой) целый столбец нулей читался буквой «о» — 16 «потерянных»
+/// чисел. Осмысленного блока из одной буквы «о» в документах не бывает.
+fn fix_lone_letter_o(text: &str) -> String {
+    match text.trim() {
+        "О" | "о" | "O" | "o" => "0".to_string(),
+        _ => text.to_string(),
+    }
 }
 
 /// Перегруппировка пробелов в больших числах. OCR часто смещает
@@ -481,7 +504,9 @@ impl OcrEngine {
                 break;
             }
             let (raw, conf, _) = &results[i];
-            let text = normalize_numbers(&normalize_digit_lookalikes(&normalize_units(raw)));
+            let text = fix_lone_letter_o(&normalize_numbers(&normalize_digit_lookalikes(
+                &normalize_units(raw),
+            )));
             let lang = detect_lang(&text);
             blocks.push(Block {
                 text: text.clone(),
@@ -539,7 +564,13 @@ impl OcrEngine {
         let mut out: Vec<Option<(String, f32)>> = vec![None; quads.len()];
         for (k, &i) in idxs.iter().enumerate() {
             if let Some((text, conf, _)) = run.get(k) {
-                out[i] = Some((text.clone(), *conf));
+                // та же цепочка пост-обработки, что и для обычных блоков:
+                // в ячейках таблиц числа важнее всего, «б000»/«1-Зсорт»
+                // не должны утекать в XLSX сырыми
+                let text = fix_lone_letter_o(&normalize_numbers(&normalize_digit_lookalikes(
+                    &normalize_units(text),
+                )));
+                out[i] = Some((text, *conf));
             }
         }
         out
@@ -680,9 +711,13 @@ impl OcrEngine {
     }
 
     /// Перечитать очень длинную строку по частям в полном разрешении.
-    /// Число частей: каждая — не шире 24:1 (меньше лимита 1280/48),
-    /// перекрытие 10% между соседями, последовательная склейка
-    /// с вычитанием дублирующейся зоны.
+    /// Число частей: каждая — не шире 24:1 (меньше лимита 1280/48).
+    /// Границы частей сдвигаются к ближайшему «просвету» — вертикальной
+    /// полосе без текста (пробел между колонками сметы): фиксированная
+    /// нарезка режет посреди чисел и теряет цифры («33 245,54» → «3»).
+    /// Перекрытие между соседями сохраняется (в просвете оно пустое —
+    /// склейка вставит пробел), последовательное слияние с вычитанием
+    /// дублирующейся зоны.
     fn retry_long_crop(&self, crop: &RgbImage) -> Option<(String, f32)> {
         let (w, h) = crop.dimensions();
         let ratio = w as f32 / h.max(1) as f32;
@@ -696,10 +731,19 @@ impl OcrEngine {
         if pw < 8 {
             return None;
         }
+        let gaps = gap_centers(crop);
+        let max_shift = (pw as f32 * 0.35).round() as u32; // куда можно сдвинуть границу
         let mut crops: Vec<RgbImage> = Vec::with_capacity(n);
         let mut x = 0u32;
         while x < w {
-            let end = (x + pw).min(w);
+            let ideal = x + pw;
+            let end = if ideal < w {
+                // граница — в просвет, если он в досягаемости; иначе как было
+                let snapped = snap_to_gap(ideal, &gaps, max_shift);
+                snapped.clamp(x + 8, w - 8)
+            } else {
+                w
+            };
             crops.push(image::imageops::crop_imm(crop, x, 0, end - x, h).to_image());
             if end >= w {
                 break;
@@ -768,6 +812,65 @@ fn merge_overlapping(a: &str, b: &str) -> String {
     }
     out.extend(bc[best..].iter());
     out
+}
+
+/// Профиль «чернил» по колонкам кропа: сколько тёмных пикселей в колонке x.
+fn ink_profile(crop: &RgbImage) -> Vec<u32> {
+    let (w, h) = crop.dimensions();
+    let mut prof = vec![0u32; w as usize];
+    for y in 0..h {
+        for x in 0..w {
+            let p = crop.get_pixel(x, y);
+            // быстрая люминанция; фон кропа после warp — белый
+            let lum = (p[0] as u32 + p[1] as u32 + p[2] as u32) / 3;
+            if lum < 160 {
+                prof[x as usize] += 1;
+            }
+        }
+    }
+    prof
+}
+
+/// Центры «просветов» — вертикальных полос практически без текста
+/// (пробелы между колонками сметы). Ширина полосы ≥ 3 px.
+fn gap_centers(crop: &RgbImage) -> Vec<u32> {
+    let (w, h) = crop.dimensions();
+    let prof = ink_profile(crop);
+    // колонка «пустая», если тёмных пикселей ≤ 6% высоты
+    let limit = ((h as f32) * 0.06).ceil() as u32;
+    let mut centers = Vec::new();
+    let mut run_start: Option<usize> = None;
+    for (x, &v) in prof.iter().enumerate() {
+        if v <= limit {
+            if run_start.is_none() {
+                run_start = Some(x);
+            }
+        } else if let Some(s) = run_start.take() {
+            if x - s >= 3 {
+                centers.push(((s + x) / 2) as u32);
+            }
+        }
+    }
+    if let Some(s) = run_start {
+        if w as usize - s >= 3 {
+            centers.push(((s + w as usize) / 2) as u32);
+        }
+    }
+    centers
+}
+
+/// Сдвинуть границу разреза к ближайшему просвету (не дальше max_shift).
+fn snap_to_gap(x: u32, centers: &[u32], max_shift: u32) -> u32 {
+    let mut best = x;
+    let mut best_d = u32::MAX;
+    for &c in centers {
+        let d = if c > x { c - x } else { x - c };
+        if d < best_d && d <= max_shift {
+            best_d = d;
+            best = c;
+        }
+    }
+    best
 }
 
 /// Вырезать блок из картинки (перспектива → прямой прямоугольник).
@@ -905,6 +1008,50 @@ mod tests {
     }
 
     #[test]
+    fn gap_snapping() {
+        use image::Rgb;
+        // белая полоса 400×20, два «слова» тёмными пикселями: [10..80) и [300..380)
+        let mut img = image::RgbImage::from_pixel(400, 20, Rgb([255, 255, 255]));
+        for x in 10..80 {
+            for y in 4..16 {
+                img.put_pixel(x, y, Rgb([0, 0, 0]));
+            }
+        }
+        for x in 300..380 {
+            for y in 4..16 {
+                img.put_pixel(x, y, Rgb([0, 0, 0]));
+            }
+        }
+        let gaps = gap_centers(&img);
+        // один просвет между словами (краевые полосы тоже пустые,
+        // но центрируются на краях — для снапа это тоже безопасно)
+        let mid = gaps
+            .iter()
+            .copied()
+            .find(|&c| c > 100 && c < 290)
+            .expect("просвет между словами не найден");
+        // граница рядом с серединой сдвигается в просвет
+        assert_eq!(snap_to_gap(190, &gaps, 200), mid);
+        // далеко от просвета — остаётся на месте
+        assert_eq!(snap_to_gap(190, &[50], 10), 190);
+        // просвет за пределом сдвига — не используется
+        assert_eq!(snap_to_gap(190, &[60], 100), 190);
+    }
+
+    #[test]
+    fn lone_letter_o_is_zero() {
+        assert_eq!(fix_lone_letter_o("о"), "0");
+        assert_eq!(fix_lone_letter_o("О "), "0");
+        assert_eq!(fix_lone_letter_o("O"), "0");
+        assert_eq!(fix_lone_letter_o("o"), "0");
+        // не одиночные — не трогаем
+        assert_eq!(fix_lone_letter_o("под"), "под");
+        assert_eq!(fix_lone_letter_o("0"), "0");
+        assert_eq!(fix_lone_letter_o("окно"), "окно");
+        assert_eq!(fix_lone_letter_o("1 о"), "1 о");
+    }
+
+    #[test]
     fn lookalikes() {
         assert_eq!(normalize_digit_lookalikes("25х100хб000мм"), "25х100х6000мм");
         assert_eq!(normalize_digit_lookalikes("б000"), "6000");
@@ -916,6 +1063,14 @@ mod tests {
         assert_eq!(normalize_digit_lookalikes("Зсорт"), "Зсорт");
         // 1Зсорт: З после цифры → 3
         assert_eq!(normalize_digit_lookalikes("1Зсорт"), "13сорт");
+        // через один разделитель: дефис режет токен, но это цифра диапазона
+        assert_eq!(normalize_digit_lookalikes("1-Зсорт"), "1-3сорт");
+        assert_eq!(normalize_digit_lookalikes("100-Зшт"), "100-3шт");
+        assert_eq!(normalize_digit_lookalikes("2/Зм"), "2/3м");
+        assert_eq!(normalize_digit_lookalikes("6000-Зсорт2"), "6000-3сорт2");
+        // два разделителя или буква перед дефисом — обычный текст, не трогаем
+        assert_eq!(normalize_digit_lookalikes("1 - Зсорт"), "1 - Зсорт");
+        assert_eq!(normalize_digit_lookalikes("п.-Зсорт"), "п.-Зсорт");
     }
 
     #[test]

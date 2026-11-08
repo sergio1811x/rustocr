@@ -39,6 +39,81 @@ pub struct DetInput {
     pub ratio: f32, // масштаб «оригинал → вход сети»
 }
 
+/// Выравнивание локального фона перед детекцией (env RUSTOCR_DET_FLATTEN=1).
+/// Встречаются PDF, где числа «Итого» напечатаны бледно-серым по серой
+/// заливке ячейки — контраст ~5%, детектор не видит текст (распознаватель
+/// при этом читает его отлично). Локальный фон (бокс-блюр) вычитается,
+/// контраст усиливается — «призрак» становится обычным текстом.
+/// Выключено по умолчанию: меняет вход детектора для ВСЕХ страниц.
+fn flatten_enabled() -> bool {
+    static V: OnceLock<bool> = OnceLock::new();
+    *V.get_or_init(|| std::env::var("RUSTOCR_DET_FLATTEN").ok().as_deref() == Some("1"))
+}
+
+fn env_u32(name: &str, default: u32) -> u32 {
+    std::env::var(name)
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(default)
+}
+
+fn env_f32_det(name: &str, default: f32) -> f32 {
+    std::env::var(name)
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(default)
+        .clamp(0.1, 50.0)
+}
+
+/// Бокс-блюр одного канала: префикс-суммы по строкам, потом по столбцам.
+/// Окно [x-r, x+r] с усечением на границах.
+fn box_blur(src: &[u8], w: usize, h: usize, r: usize) -> Vec<f32> {
+    let mut tmp = vec![0f32; w * h];
+    for y in 0..h {
+        let row = y * w;
+        let mut pref = vec![0f64; w + 1];
+        for x in 0..w {
+            pref[x + 1] = pref[x] + src[row + x] as f64;
+        }
+        for x in 0..w {
+            let x0 = x.saturating_sub(r);
+            let x1 = (x + r + 1).min(w);
+            tmp[row + x] = ((pref[x1] - pref[x0]) / (x1 - x0) as f64) as f32;
+        }
+    }
+    let mut out = vec![0f32; w * h];
+    for x in 0..w {
+        let mut pref = vec![0f64; h + 1];
+        for y in 0..h {
+            pref[y + 1] = pref[y] + tmp[y * w + x] as f64;
+        }
+        for y in 0..h {
+            let y0 = y.saturating_sub(r);
+            let y1 = (y + r + 1).min(h);
+            out[y * w + x] = ((pref[y1] - pref[y0]) / (y1 - y0) as f64) as f32;
+        }
+    }
+    out
+}
+
+/// Вычесть локальный фон и усилить контраст (по каждому каналу).
+fn flatten_background(img: &mut image::RgbImage) {
+    let (w, h) = img.dimensions();
+    let (w, h) = (w as usize, h as usize);
+    let r = env_u32("RUSTOCR_DET_FLATTEN_RADIUS", 8) as usize;
+    let gain = env_f32_det("RUSTOCR_DET_FLATTEN_GAIN", 8.0);
+    let bias = 245.0f32;
+    for ch in 0..3 {
+        let src: Vec<u8> = (0..w * h).map(|i| img.get_pixel((i % w) as u32, (i / w) as u32)[ch]).collect();
+        let bg = box_blur(&src, w, h, r);
+        for i in 0..w * h {
+            let p = img.get_pixel_mut((i % w) as u32, (i / w) as u32);
+            let v = (src[i] as f32 - bg[i]) * gain + bias;
+            p[ch] = v.clamp(0.0, 255.0) as u8;
+        }
+    }
+}
+
 /// Подготовка картинки: длинная сторона ≤ limit, паддинг до кратности 32,
 /// нормализация ImageNet в порядке BGR, раскладка NCHW.
 pub fn preprocess(img: &RgbImage, limit: u32) -> DetInput {
@@ -51,7 +126,10 @@ pub fn preprocess(img: &RgbImage, limit: u32) -> DetInput {
     };
     let rw = (((w as f32) * ratio).round() as u32).max(1);
     let rh = (((h as f32) * ratio).round() as u32).max(1);
-    let resized = resize_tri(img, rw, rh);
+    let mut resized = resize_tri(img, rw, rh);
+    if flatten_enabled() {
+        flatten_background(&mut resized);
+    }
     let pw = (rw + 31) / 32 * 32;
     let ph = (rh + 31) / 32 * 32;
     let c = (ph as usize) * (pw as usize);
