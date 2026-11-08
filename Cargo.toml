@@ -1,0 +1,20 @@
+[package]
+name = "rustocr"
+version = "0.1.0"
+edition = "2021"
+description = "Быстрый серверный OCR (русский + английский) на Rust: PP-OCRv5 через ONNX Runtime"
+
+[dependencies]
+ort = { version = "2.0.0-rc.9", default-features = false, features = ["load-dynamic"] }
+image = "0.25"
+axum = { version = "0.8", features = ["multipart"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "time", "sync"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+base64 = "0.22"
+anyhow = "1"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
