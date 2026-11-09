@@ -252,7 +252,9 @@ async fn process_image(st: AppState, bytes: Bytes) -> Response {
     let res = tokio::task::spawn_blocking(move || -> anyhow::Result<crate::pipeline::OcrResult> {
         // лимиты декодирования — защита от «декомпрессионной бомбы»
         let img = crate::imgio::decode_bytes(&bytes)?;
-        engine.recognize(&img.to_rgb8())
+        let mut rgb = img.to_rgb8();
+        crate::imgio::flatten_if_faded(&mut rgb);
+        engine.recognize(&rgb)
     })
     .await;
     drop(permit);

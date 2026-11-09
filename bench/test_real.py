@@ -96,7 +96,7 @@ def main():
         keys = [k.strip() for k in ONLY.split(",")]
         pdfs = [p for p in pdfs if any(k in p.name for k in keys)]
     # уже сделанные (возобновление после обрыва)
-    done = {f.stem for f in DOCS_DIR.glob("doc_*.json")}
+    done = {f.name[len("doc_"):-len(".json")] for f in DOCS_DIR.glob("doc_*.json")}
     todo = [p for p in pdfs if FORCE or p.stem not in done]
     print(f"PDF всего: {len(pdfs)}, осталось: {len(todo)}, DPI: {DPI}", flush=True)
     if not todo:

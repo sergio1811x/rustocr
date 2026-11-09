@@ -10,6 +10,7 @@ use ort::session::Session;
 use ort::value::Tensor;
 use ort::inputs;
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
 use std::sync::{Mutex, MutexGuard};
 use std::time::Instant;
 
@@ -19,7 +20,119 @@ const ROT_RETRY_CONF: f32 = 0.45; // средняя уверенность ни�
 const ROT_RETRY_MIN_BLOCKS: usize = 3; // минимум блоков, чтобы вообще пробовать
 const ROT_MARGIN: f32 = 0.10; // повёрнутый вариант должен быть заметно лучше
 
+const DESKEW_MIN_DEG: f32 = 0.3; // меньше — джиттер прямых сканов, не трогаем
+const DESKEW_MAX_DEG: f32 = 5.0; // больше — это не крен (фото/перспектива)
+
+/// Выравнивание крена страницы (env RUSTOCR_DESKEW, по умолчанию 1).
+/// Крен 1–2° (лист криво лёг в сканер) глушит детекцию тонких строк:
+/// на реальной смете 254 числа → 175 (−31%). Угол берём как взвешенную
+/// медиану углов «линейных» квадов детекции (ширина > 3·высоты),
+/// выравниваем страницу и распознаём заново; квады возвращаем
+/// в координаты исходной картинки. Прямые страницы — угол ~0,
+/// повторный проход не запускается.
+fn deskew_enabled() -> bool {
+    static V: OnceLock<bool> = OnceLock::new();
+    *V.get_or_init(|| {
+        std::env::var("RUSTOCR_DESKEW")
+            .map(|v| v != "0")
+            .unwrap_or(true)
+    })
+}
+
+/// Медианный угол «линейных» боксов (рад), вес — квадрат ширины: у коротких
+/// боксов дрейф от крена субпиксельный на карте детекции, их угол квантуется
+/// в 0° и топит оценку (newizba: 13 «нулей» против 9 наклонённых).
+/// None — мало улик.
+fn skew_angle(quads: &[[Pt; 4]]) -> Option<f32> {
+    let mut acc: Vec<(f32, f32)> = Vec::new(); // (угол, вес)
+    for q in quads {
+        let o = order_quad(q);
+        let w = crate::geom::dist(o[0], o[1]);
+        let h = crate::geom::dist(o[0], o[3]).max(crate::geom::dist(o[1], o[2]));
+        if w > 2.5 * h && h > 4.0 && w > 80.0 {
+            acc.push(((o[1].y - o[0].y).atan2(o[1].x - o[0].x), w * w));
+        }
+    }
+    if acc.len() < 5 {
+        return None;
+    }
+    let total: f32 = acc.iter().map(|(_, w)| *w).sum();
+    acc.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+    if std::env::var("RUSTOCR_DESKEW_DEBUG").is_ok() {
+        let meds = acc
+            .iter()
+            .map(|(a, _)| a.to_degrees())
+            .collect::<Vec<_>>();
+        eprintln!(
+            "[skew] линейных: {}, углы: min {:.2}° / медиана-элем {:.2}° / max {:.2}°",
+            acc.len(),
+            meds.first().copied().unwrap_or(0.0),
+            meds[meds.len() / 2],
+            meds.last().copied().unwrap_or(0.0)
+        );
+    }
+    let mut cum = 0.0;
+    for (ang, w) in &acc {
+        cum += *w;
+        if cum >= total * 0.5 {
+            return Some(*ang);
+        }
+    }
+    None
+}
+
+/// Поворорот картинки на θ (рад) вокруг центра: out(x,y) = src(R_θ(x,y)).
+/// Текст, наклонённый на +θ, становится горизонтальным.
+fn rotate_page(img: &RgbImage, theta: f32) -> RgbImage {
+    let (w, h) = (img.width() as f32, img.height() as f32);
+    let (cx, cy) = (w / 2.0, h / 2.0);
+    let (s, c) = (theta.sin(), theta.cos());
+    let rot = |x: f32, y: f32| -> Pt {
+        let (dx, dy) = (x - cx, y - cy);
+        Pt {
+            x: cx + dx * c - dy * s,
+            y: cy + dx * s + dy * c,
+        }
+    };
+    let quad = [
+        rot(0.0, 0.0),
+        rot(w - 1.0, 0.0),
+        rot(w - 1.0, h - 1.0),
+        rot(0.0, h - 1.0),
+    ];
+    crate::geom::warp_quad(img, &quad, img.width(), img.height())
+}
+
+/// Квады результата из координат выровненной картинки — в исходные.
+fn unrotate_quads(res: &mut OcrResult, theta: f32, w: u32, h: u32) {
+    let (cx, cy) = (w as f32 / 2.0, h as f32 / 2.0);
+    let (s, c) = (theta.sin(), theta.cos());
+    for b in res.blocks.iter_mut() {
+        for p in b.quad.iter_mut() {
+            let (dx, dy) = (p.x - cx, p.y - cy);
+            p.x = cx + dx * c - dy * s;
+            p.y = cy + dx * s + dy * c;
+        }
+    }
+}
+
 const REC_LONG_RATIO: f32 = 26.0; // шире 26:1 (≈1280px при h=48) — строка сжимается
+
+/// Запас вокруг детекторного квада при вырезании строки (env RUSTOCR_CROP_PAD,
+/// 0..=16, по умолчанию 0 = выкл). Проверено на 14 сметах (17 119 чисел):
+/// pad 2 → 98.1%, pad 4 → 94.2% против 99.2% без него. В тесных таблицах
+/// запас втягивает цифры соседних ячеек в кроп (потеря хвостовых «,00»);
+/// точечный выигрыш на бледных ячейках не окупает массовых потерь.
+fn crop_pad() -> f32 {
+    static V: OnceLock<f32> = OnceLock::new();
+    *V.get_or_init(|| {
+        std::env::var("RUSTOCR_CROP_PAD")
+            .ok()
+            .and_then(|v| v.parse::<f32>().ok())
+            .unwrap_or(0.0)
+            .clamp(0.0, 16.0)
+    })
+}
 
 /// Максимальный размер порции строк в под-пачке (env RUSTOCR_REC_CHUNK, 1..=64).
 fn rec_chunk() -> usize {
@@ -371,15 +484,58 @@ impl OcrEngine {
         self.table_cyr.len()
     }
 
-    /// Распознать всю картинку (с авто-поворотом при неуверенном чтении).
+    /// Распознать всю картинку (выравнивание крена + авто-поворот 90° при
+    /// неуверенном чтении).
     pub fn recognize(&self, img: &RgbImage) -> Result<OcrResult> {
         let base = self.recognize_inner(img)?;
-        let avg = avg_confidence(&base);
-        if avg >= ROT_RETRY_CONF || base.blocks.len() < ROT_RETRY_MIN_BLOCKS {
-            return Ok(base);
+        let mut best = base;
+        // 0) крен: тонкие строки пропадают из детекции — выравниваем и
+        //    перечитываем; вариант с бóльшим числом блоков выигрывает.
+        //    До двух проходов: на бледных страницах крен глушит и длинные
+        //    боксы — первый угол недооценён, дожимаем остаток вторым.
+        if deskew_enabled() {
+            let mut straight_img: Option<RgbImage> = None;
+            let mut cum_ang = 0.0f32;
+            for _ in 0..2 {
+                let quads: Vec<[Pt; 4]> = best.blocks.iter().map(|b| b.quad).collect();
+                let Some(ang) = skew_angle(&quads) else { break };
+                if std::env::var("RUSTOCR_DESKEW_DEBUG").is_ok() {
+                    eprintln!(
+                        "[deskew] угол {:.3}° (линейных квадов: {}), блоков сейчас {}",
+                        ang.to_degrees(),
+                        quads.len(),
+                        best.blocks.len()
+                    );
+                }
+                let deg = ang.to_degrees().abs();
+                if !(DESKEW_MIN_DEG..=DESKEW_MAX_DEG).contains(&deg) {
+                    break;
+                }
+                let base_img: &RgbImage = straight_img.as_ref().unwrap_or(img);
+                let rotated = rotate_page(base_img, ang);
+                let Ok(c) = self.recognize_inner(&rotated) else { break };
+                // «не хуже» по блокам: частичная коррекция может не дать
+                // прироста, но приближает страницу к прямой — остаток
+                // дожмётся вторым проходом
+                if c.blocks.len() >= best.blocks.len()
+                    && avg_confidence(&c) >= avg_confidence(&best) - 0.05
+                {
+                    best = c; // квады — в координатах выровненной картинки
+                    cum_ang += ang;
+                    straight_img = Some(rotated);
+                } else {
+                    break;
+                }
+            }
+            if cum_ang != 0.0 {
+                unrotate_quads(&mut best, cum_ang, img.width(), img.height());
+            }
+        }
+        let avg = avg_confidence(&best);
+        if avg >= ROT_RETRY_CONF || best.blocks.len() < ROT_RETRY_MIN_BLOCKS {
+            return Ok(best);
         }
         // картинка читается плохо — возможно, она повёрнута: пробуем 90/180/270°
-        let mut best = base;
         for angle in [90u16, 180, 270] {
             let rotated = match angle {
                 90 => image::imageops::rotate90(img),
@@ -875,7 +1031,21 @@ fn snap_to_gap(x: u32, centers: &[u32], max_shift: u32) -> u32 {
 
 /// Вырезать блок из картинки (перспектива → прямой прямоугольник).
 fn crop_box(img: &RgbImage, b: &DetBox) -> Option<RgbImage> {
-    crop_quad(img, &b.quad)
+    let mut q = b.quad;
+    let pad = crop_pad();
+    if pad > 0.0 {
+        // расширяем квад от центра: каждый угол уходит наружу на pad
+        // (для прямоугольного квада — ровно ±pad по обеим осям)
+        let cx = (q[0].x + q[1].x + q[2].x + q[3].x) * 0.25;
+        let cy = (q[0].y + q[1].y + q[2].y + q[3].y) * 0.25;
+        for p in q.iter_mut() {
+            p.x += (p.x - cx).signum() * pad;
+            p.y += (p.y - cy).signum() * pad;
+            p.x = p.x.clamp(0.0, (img.width() - 1) as f32);
+            p.y = p.y.clamp(0.0, (img.height() - 1) as f32);
+        }
+    }
+    crop_quad(img, &q)
 }
 
 fn crop_quad(img: &RgbImage, q: &[Pt; 4]) -> Option<RgbImage> {

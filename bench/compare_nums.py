@@ -88,7 +88,10 @@ def main():
         f"{100.0 * tot_found / max(1, tot_ref):.1f}% чисел распознано верно"
     )
     SUMMARY.parent.joinpath("misses.json").write_text(
-        json.dumps(misses, ensure_ascii=False)
+        json.dumps(
+            {f: {show(n): c for n, c in miss.items()} for f, miss in misses.items()},
+            ensure_ascii=False, indent=1,
+        )
     )
 
 

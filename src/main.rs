@@ -208,7 +208,8 @@ fn cli(
             xlsx_pages.push((images, results));
         } else {
             // лимиты декодирования — как в HTTP-сервере
-            let img = crate::imgio::open_file(path)?.to_rgb8();
+            let mut img = crate::imgio::open_file(path)?.to_rgb8();
+            crate::imgio::flatten_if_faded(&mut img);
             let res = engine.recognize(&img)?;
             if cfg.json_out {
                 let mut v = res.to_json();

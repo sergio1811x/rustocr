@@ -97,7 +97,7 @@ fn box_blur(src: &[u8], w: usize, h: usize, r: usize) -> Vec<f32> {
 }
 
 /// Вычесть локальный фон и усилить контраст (по каждому каналу).
-fn flatten_background(img: &mut image::RgbImage) {
+pub(crate) fn flatten_background(img: &mut image::RgbImage) {
     let (w, h) = img.dimensions();
     let (w, h) = (w as usize, h as usize);
     let r = env_u32("RUSTOCR_DET_FLATTEN_RADIUS", 8) as usize;

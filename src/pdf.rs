@@ -182,7 +182,11 @@ impl PdfRender {
             }
             let img = crate::imgio::open_file(&p)
                 .with_context(|| format!("декодирование страницы {}", num))?;
-            imgs.push(img.to_rgb8());
+            // выцветший скан: выравниваем фон до распознавания (и текст,
+            // и таблицы в Excel получают одинаково подготовленную страницу)
+            let mut rgb = img.to_rgb8();
+            crate::imgio::flatten_if_faded(&mut rgb);
+            imgs.push(rgb);
             let _ = std::fs::remove_file(&p);
         }
         if imgs.is_empty() {
