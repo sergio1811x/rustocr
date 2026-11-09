@@ -5,6 +5,7 @@
 
 pub mod model;
 pub mod pazl;
+pub mod repair;
 pub mod semantics;
 pub mod structure;
 pub mod validate;
@@ -68,11 +69,80 @@ pub fn parse_rows(rows: Vec<semantics::DocRow>, pages: usize) -> EstimateDocumen
     doc
 }
 
+/// Запасной путь: страница без таблицы — простые текстовые строки.
+fn text_rows(page: usize, result: &OcrResult) -> Vec<semantics::DocRow> {
+    result
+        .text
+        .lines()
+        .filter(|l| !l.trim().is_empty())
+        .map(|l| semantics::DocRow {
+            page,
+            columnar: false,
+            cells: vec![(0, 1, l.trim().to_string())],
+        })
+        .collect()
+}
+
+/// Общие границы колонок документа: кластеризация собственных границ
+/// всех страниц (допуск 15 px). Страницы одного документа рендерятся в
+/// одном масштабе, и колонки таблицы стоят на одних X — раскладывая все
+/// страницы в ЕДИНОМ наборе границ, получаем совпадающие индексы
+/// колонок: роли шапки, выученные на первой странице, работают на
+/// остальных (иначе страницы со «слепыми» участками теряют числа).
+fn global_boundaries(pages: &[PageInput]) -> Vec<f32> {
+    let mut edges: Vec<f32> = Vec::new();
+    for p in pages {
+        if let Some(skel) = structure::page_skeleton(p.img, p.result) {
+            edges.extend(skel.boundaries.iter().copied());
+        }
+    }
+    edges.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    let mut global: Vec<f32> = Vec::new();
+    let mut cluster: Vec<f32> = Vec::new();
+    for e in edges {
+        match cluster.last() {
+            Some(&last) if e - last <= 15.0 => cluster.push(e),
+            _ => {
+                if !cluster.is_empty() {
+                    global.push(cluster.iter().sum::<f32>() / cluster.len() as f32);
+                }
+                cluster.clear();
+                cluster.push(e);
+            }
+        }
+    }
+    if !cluster.is_empty() {
+        global.push(cluster.iter().sum::<f32>() / cluster.len() as f32);
+    }
+    global
+}
+
 /// Полный конвейер по страницам (CLI: картинки уже в памяти).
 pub fn parse_estimate(engine: Option<&OcrEngine>, pages: &[PageInput]) -> EstimateDocument {
+    // общие границы колонок: скелеты страниц проходятся дважды — дёшево
+    // (геометрия и профиль просветов, без раскладки и перечтения)
+    let global = global_boundaries(pages);
     let mut rows: Vec<semantics::DocRow> = Vec::new();
     for p in pages {
-        rows.extend(page_rows(engine, p.img, p.result, p.page));
+        let table = structure::page_skeleton(p.img, p.result)
+            .and_then(|skel| structure::layout_page(skel, engine, p.img, &global));
+        match table {
+            Some(t) => rows.extend(
+                t.rows
+                    .iter()
+                    .filter(|r| !r.cells.is_empty())
+                    .map(|tr| semantics::DocRow {
+                        page: p.page,
+                        columnar: tr.columnar,
+                        cells: tr
+                            .cells
+                            .iter()
+                            .map(|c| (c.col, c.colspan, c.text.clone()))
+                            .collect(),
+                    }),
+            ),
+            None => rows.extend(text_rows(p.page, p.result)),
+        }
     }
     parse_rows(rows, pages.len())
 }

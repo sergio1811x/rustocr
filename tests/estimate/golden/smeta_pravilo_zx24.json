@@ -1,0 +1,43 @@
+{
+ "pages": 5,
+ "sections": 3,
+ "positions": 182,
+ "resources": 13,
+ "table_rows": 257,
+ "unclassified_rows": 84,
+ "qty_price_checked": 5,
+ "section_totals_checked": 2,
+ "total": 1.0,
+ "vat": null,
+ "total_with_vat": null,
+ "errors": [
+  "doc_total_mismatch",
+  "section_total_mismatch",
+  "section_total_mismatch"
+ ],
+ "warnings": [
+  "auto_repair",
+  "auto_repair",
+  "auto_repair",
+  "auto_repair",
+  "auto_repair",
+  "unclassified_rows"
+ ],
+ "sections_detail": [
+  {
+   "title": "г. Москва",
+   "positions": 127,
+   "total": 23571317548449.36
+  },
+  {
+   "title": "www.vfstroy.ru",
+   "positions": 55,
+   "total": 234386.17
+  },
+  {
+   "title": "www.vfstroy.ru",
+   "positions": 0,
+   "total": null
+  }
+ ]
+}

@@ -1,7 +1,7 @@
 {
  "pages": 1,
  "sections": 1,
- "positions": 23,
+ "positions": 22,
  "resources": 1,
  "table_rows": 36,
  "unclassified_rows": 19,
@@ -32,13 +32,12 @@
   "position_no_numbers",
   "position_no_numbers",
   "position_no_numbers",
-  "position_no_numbers",
   "unclassified_rows"
  ],
  "sections_detail": [
   {
    "title": "Стоимость Итого,",
-   "positions": 23,
+   "positions": 22,
    "total": 894742.0
   }
  ]

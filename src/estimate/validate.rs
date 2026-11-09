@@ -4,6 +4,7 @@
 //! которые парсер не понял.
 
 use crate::estimate::model::*;
+use crate::estimate::repair;
 
 /// Допуск для «количество × цена = сумма» (округления в сметах обычны).
 const QTY_PRICE_TOL: f64 = 0.02; // 2%
@@ -13,6 +14,11 @@ const TOTAL_TOL_RUB: f64 = 2.0;
 const TOTAL_TOL_SHARE: f64 = 0.005; // 0.5%
 
 pub fn validate(doc: &mut EstimateDocument) {
+    // СНАЧАЛА авто-починка: она меняет значения, а валидация ниже уже
+    // проверяет починенный документ и не генерит ложных ошибок про
+    // расхождения, которые мы сами устранили.
+    let notes = repair::repair(doc);
+
     let mut rep = std::mem::take(&mut doc.validation);
     rep.errors.clear();
     rep.warnings.clear();
@@ -24,6 +30,11 @@ pub fn validate(doc: &mut EstimateDocument) {
         unclassified_rows,
         ..Default::default()
     };
+
+    // отчёт о починках — в warnings, одной строкой на починку
+    for n in &notes {
+        rep.warn("auto_repair", n.clone(), None);
+    }
 
     // --- позиции: количество × цена = сумма ---
     let sections = doc.sections.clone();
@@ -42,14 +53,41 @@ pub fn validate(doc: &mut EstimateDocument) {
         if n_with_total > 0 {
             let diff = (sum_sections - t.value).abs();
             if diff > tolerance(t.value) {
-                rep.error(
-                    "doc_total_mismatch",
-                    format!(
-                        "Итог сметы {} ≠ Σ итогов разделов {} (разница {:.2} руб.)",
-                        t.value, sum_sections, diff
-                    ),
-                    Some("документ".to_string()),
-                );
+                // разница может быть итогом раздела(ов), не входящих в
+                // комплектацию («Итого дом в комплектации "КОРОБКА"» без
+                // опциональных разделов вроде перегородок) — это не
+                // арифметическая ошибка
+                let sec_totals: Vec<f64> = sections
+                    .iter()
+                    .map(|s| section_sum(s))
+                    .filter(|v| *v > 0.0)
+                    .collect();
+                let single = sec_totals.iter().any(|&v| (v - diff).abs() <= tolerance(v));
+                let pair = sec_totals.iter().enumerate().any(|(i, &a)| {
+                    sec_totals[i + 1..]
+                        .iter()
+                        .any(|&b| (a + b - diff).abs() <= tolerance(diff))
+                });
+                if single || pair {
+                    rep.warn(
+                        "doc_total_excludes_sections",
+                        format!(
+                            "Итог сметы {} не включает Σ разделов {} (разница {:.2} руб. — \
+                             итоги раздела(ов) вне итога/комплектации)",
+                            t.value, sum_sections, diff
+                        ),
+                        Some("документ".to_string()),
+                    );
+                } else {
+                    rep.error(
+                        "doc_total_mismatch",
+                        format!(
+                            "Итог сметы {} ≠ Σ итогов разделов {} (разница {:.2} руб.)",
+                            t.value, sum_sections, diff
+                        ),
+                        Some("документ".to_string()),
+                    );
+                }
             }
         }
     } else if n_with_total > 1 && sum_sections > 0.0 {
@@ -358,6 +396,7 @@ mod tests {
             },
             validation: ValidationReport::default(),
             unparsed_lines: Vec::new(),
+            auto_repairs: 0,
             pages: 1,
         };
         validate(&mut doc);
@@ -388,6 +427,7 @@ mod tests {
             },
             validation: ValidationReport::default(),
             unparsed_lines: Vec::new(),
+            auto_repairs: 0,
             pages: 1,
         };
         validate(&mut doc);
@@ -416,6 +456,7 @@ mod tests {
             totals: Totals::default(),
             validation: ValidationReport::default(),
             unparsed_lines: Vec::new(),
+            auto_repairs: 0,
             pages: 1,
         };
         validate(&mut doc);

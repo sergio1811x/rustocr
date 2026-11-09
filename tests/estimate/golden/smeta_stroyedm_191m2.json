@@ -1,10 +1,10 @@
 {
  "pages": 7,
  "sections": 1,
- "positions": 152,
+ "positions": 140,
  "resources": 0,
  "table_rows": 406,
- "unclassified_rows": 354,
+ "unclassified_rows": 339,
  "qty_price_checked": 2,
  "section_totals_checked": 1,
  "total": 8140862.87,
@@ -62,8 +62,6 @@
   "position_no_numbers",
   "position_no_numbers",
   "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
   "qty_price_mismatch",
   "qty_price_mismatch",
   "unclassified_rows"
@@ -71,7 +69,7 @@
  "sections_detail": [
   {
    "title": "(без разделов)",
-   "positions": 152,
+   "positions": 140,
    "total": 8140862.87
   }
  ]

@@ -1,13 +1,13 @@
 {
  "pages": 48,
  "sections": 2,
- "positions": 422,
+ "positions": 403,
  "resources": 0,
  "table_rows": 1192,
- "unclassified_rows": 1389,
- "qty_price_checked": 152,
+ "unclassified_rows": 1385,
+ "qty_price_checked": 145,
  "section_totals_checked": 1,
- "total": 2786.0,
+ "total": 33961.0,
  "vat": null,
  "total_with_vat": null,
  "errors": [
@@ -198,19 +198,13 @@
   "qty_price_mismatch",
   "qty_price_mismatch",
   "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
   "unclassified_rows"
  ],
  "sections_detail": [
   {
    "title": "ВЕДОМОСТЬ ОБЪЕМОВ РАБОТ",
-   "positions": 422,
-   "total": 2786.0
+   "positions": 403,
+   "total": 33961.0
   },
   {
    "title": "ГИ II об ъек та",

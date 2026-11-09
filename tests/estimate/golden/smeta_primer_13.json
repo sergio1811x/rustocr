@@ -1,10 +1,10 @@
 {
  "pages": 29,
  "sections": 14,
- "positions": 386,
+ "positions": 373,
  "resources": 20,
  "table_rows": 825,
- "unclassified_rows": 698,
+ "unclassified_rows": 651,
  "qty_price_checked": 0,
  "section_totals_checked": 14,
  "total": 3653728.0,
@@ -135,57 +135,57 @@
  "sections_detail": [
   {
    "title": "Сметный Калькулятор",
-   "positions": 89,
+   "positions": 88,
    "total": 862239.0
   },
   {
    "title": "Сметный Калькулятор",
-   "positions": 23,
+   "positions": 22,
    "total": 90183.0
   },
   {
    "title": "Полы",
-   "positions": 42,
+   "positions": 41,
    "total": 556807.0
   },
   {
    "title": "Сметный Калькулятор",
-   "positions": 23,
+   "positions": 22,
    "total": 870351.0
   },
   {
    "title": "Оконн ые заполнения",
-   "positions": 21,
+   "positions": 20,
    "total": 93057.0
   },
   {
    "title": "Дверн ые проемы",
-   "positions": 15,
+   "positions": 14,
    "total": 92595.0
   },
   {
    "title": "Отдел очные работы",
-   "positions": 48,
+   "positions": 47,
    "total": 738589.0
   },
   {
    "title": "Сметный Калькулятор",
-   "positions": 23,
+   "positions": 22,
    "total": 63813.0
   },
   {
    "title": "Полы из досок",
-   "positions": 42,
+   "positions": 41,
    "total": 83948.0
   },
   {
    "title": "Устро йство перегородок",
-   "positions": 12,
+   "positions": 11,
    "total": 55179.0
   },
   {
    "title": "Метал лические конструкции",
-   "positions": 10,
+   "positions": 9,
    "total": 61191.0
   },
   {
@@ -195,12 +195,12 @@
   },
   {
    "title": "Устро йсТВО оСНовАНИй",
-   "positions": 12,
+   "positions": 11,
    "total": 4445.0
   },
   {
    "title": "Сметный Калькулятор",
-   "positions": 24,
+   "positions": 23,
    "total": 3653728.0
   }
  ]

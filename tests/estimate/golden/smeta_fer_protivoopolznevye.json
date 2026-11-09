@@ -1,11 +1,11 @@
 {
  "pages": 8,
  "sections": 2,
- "positions": 106,
- "resources": 2,
+ "positions": 85,
+ "resources": 4,
  "table_rows": 148,
  "unclassified_rows": 224,
- "qty_price_checked": 77,
+ "qty_price_checked": 66,
  "section_totals_checked": 1,
  "total": 2389.4,
  "vat": null,
@@ -70,29 +70,6 @@
   "qty_price_mismatch",
   "qty_price_mismatch",
   "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
   "unclassified_rows"
  ],
  "sections_detail": [
@@ -103,7 +80,7 @@
   },
   {
    "title": "Укладка труб дрены и коллектора",
-   "positions": 106,
+   "positions": 85,
    "total": 2389.4
   }
  ]

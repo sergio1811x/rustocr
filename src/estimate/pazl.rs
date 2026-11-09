@@ -436,6 +436,7 @@ mod tests {
             },
             validation: ValidationReport::default(),
             unparsed_lines: Vec::new(),
+            auto_repairs: 0,
             pages: 1,
         }
     }

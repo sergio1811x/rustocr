@@ -244,6 +244,8 @@ pub struct EstimateDocument {
     /// строки документа, которые парсер не понял (сырьё для LLM)
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub unparsed_lines: Vec<String>,
+    /// чинит auto-repair — суммарное число применённых починок
+    pub auto_repairs: usize,
     /// сколько страниц было на входе
     pub pages: usize,
 }
@@ -256,5 +258,14 @@ impl EstimateDocument {
             v.extend(s.all_positions());
         }
         v
+    }
+}
+
+impl Position {
+    /// Клон позиции с заменой итога (для авто-починки).
+    pub fn with_total(&self, total: Option<Num>) -> Position {
+        let mut c = self.clone();
+        c.total = total;
+        c
     }
 }

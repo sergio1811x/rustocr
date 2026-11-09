@@ -1,11 +1,11 @@
 {
  "pages": 2,
  "sections": 2,
- "positions": 12,
+ "positions": 11,
  "resources": 0,
  "table_rows": 20,
  "unclassified_rows": 26,
- "qty_price_checked": 6,
+ "qty_price_checked": 5,
  "section_totals_checked": 2,
  "total": null,
  "vat": null,
@@ -16,7 +16,6 @@
  ],
  "warnings": [
   "doc_total_missing",
-  "position_no_name",
   "qty_price_mismatch",
   "qty_price_mismatch",
   "qty_price_mismatch",
@@ -32,7 +31,7 @@
   },
   {
    "title": "расчеты\"",
-   "positions": 5,
+   "positions": 4,
    "total": 74.07
   }
  ]

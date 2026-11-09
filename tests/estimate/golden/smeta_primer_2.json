@@ -1,11 +1,11 @@
 {
  "pages": 12,
  "sections": 4,
- "positions": 129,
+ "positions": 123,
  "resources": 19,
  "table_rows": 221,
- "unclassified_rows": 301,
- "qty_price_checked": 4,
+ "unclassified_rows": 298,
+ "qty_price_checked": 8,
  "section_totals_checked": 3,
  "total": 9569707.87,
  "vat": null,
@@ -43,10 +43,9 @@
   "position_no_numbers",
   "position_no_numbers",
   "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
   "qty_price_mismatch",
   "qty_price_mismatch",
   "qty_price_mismatch",
@@ -61,17 +60,17 @@
   },
   {
    "title": "Земляные работы",
-   "positions": 49,
+   "positions": 47,
    "total": 6569322.0
   },
   {
    "title": "Сметный Калькулятор",
-   "positions": 44,
+   "positions": 42,
    "total": 409842.29
   },
   {
    "title": "п 5 Канализация К2, К12",
-   "positions": 36,
+   "positions": 34,
    "total": 8109921.92
   }
  ]

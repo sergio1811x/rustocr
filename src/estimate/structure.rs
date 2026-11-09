@@ -75,14 +75,27 @@ impl PageTable {
     }
 }
 
-/// Анализ страницы: таблица, если похоже на неё (как в table.rs — иначе None,
-/// и вызывающий работает с простыми текстовыми строками).
-/// `engine` нужен только при наличии `img` (перечтение разрезанных ячеек).
-pub fn analyze_page(
-    engine: Option<&OcrEngine>,
+/// «Скелет» страницы: сгруппированные строки блоков и СОБСТВЕННЫЕ границы
+/// колонок — результат первого прохода, не зависящий от итогового набора
+/// границ раскладки.
+pub struct PageSkeleton<'a> {
+    blocks: Vec<&'a Block>,
+    /// строки блоков (индексы в `blocks`) сверху вниз
+    rows: Vec<Vec<usize>>,
+    row_cy: Vec<f32>,
+    med_h: f32,
+    /// какие строки похожи на табличные (индексы в `rows`)
+    table_rows: Vec<usize>,
+    /// собственные границы колонок по просветам (могут быть пустыми)
+    pub boundaries: Vec<f32>,
+}
+
+/// Первый проход: строки по Y-центрам, табличные строки, границы колонок
+/// по просветам в картинке. `None` — страница заведомо не таблица.
+pub fn page_skeleton<'a>(
     img: Option<&RgbImage>,
-    r: &OcrResult,
-) -> Option<PageTable> {
+    r: &'a OcrResult,
+) -> Option<PageSkeleton<'a>> {
     let blocks: Vec<&Block> = r
         .blocks
         .iter()
@@ -129,35 +142,19 @@ pub fn analyze_page(
     }
 
     // 2) столбцы: просветы в картинке по полосам табличных строк
-    let is_columnar = |m: &Vec<usize>| -> bool {
-        if m.len() < 2 {
-            return false;
-        }
-        let mut xs: Vec<(f32, f32)> = m
-            .iter()
-            .map(|&i| {
-                let (cx, _, w, _) = block_geom(blocks[i]);
-                (cx - w / 2.0, cx + w / 2.0)
-            })
-            .collect();
-        xs.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
-        let mut max_gap = 0.0f32;
-        for wnd in xs.windows(2) {
-            let g = wnd[1].0 - wnd[0].1;
-            if g > max_gap {
-                max_gap = g;
-            }
-        }
-        max_gap >= (med_h).max(25.0)
-    };
-    let table_rows: Vec<&Vec<usize>> = rows
+    let table_rows: Vec<usize> = rows
         .iter()
-        .filter(|m| m.len() >= 2 && is_columnar(m))
+        .enumerate()
+        .filter(|(_, m)| m.len() >= 2 && row_is_columnar(&blocks, m, med_h))
+        .map(|(i, _)| i)
         .collect();
-    let table_blocks: Vec<usize> = table_rows.iter().flat_map(|m| m.iter().copied()).collect();
-    if table_blocks.is_empty() {
+    if table_rows.is_empty() {
         return None;
     }
+    let table_blocks: Vec<usize> = table_rows
+        .iter()
+        .flat_map(|&ti| rows[ti].iter().copied())
+        .collect();
 
     let debug = std::env::var("RUSTOCR_TABLE_DEBUG").is_ok();
 
@@ -183,7 +180,22 @@ pub fn analyze_page(
                 let p = img.get_pixel(x, y);
                 (p[0] as u32 + p[1] as u32 + p[2] as u32) / 3 < 140
             };
-            for row in &table_rows {
+            // в профиле просветов участвуют только строки-ДАННЫЕ (с
+            // числами): подписи двухуровневых шапок («Материалы»,
+            // «Цена руб.», «Кол-во», «Итоговая…») стоят МЕЖДУ колонками и
+            // перекрывают просветы, блокируя детекцию границ — из-за
+            // этого коммерческие сметы в бланке без сетки теряли колонки
+            // целиком (вся страница выпадала из таблицы)
+            let is_data_row = |m: &Vec<usize>| -> bool {
+                m.iter().any(|&i| {
+                    crate::estimate::semantics::parse_number(blocks[i].text.trim()).is_some()
+                })
+            };
+            for &ti in &table_rows {
+                let row = &rows[ti];
+                if !is_data_row(row) {
+                    continue;
+                }
                 let y0 = row
                     .iter()
                     .map(|&i| block_geom(blocks[i]).1 - block_geom(blocks[i]).3 / 2.0)
@@ -272,6 +284,47 @@ pub fn analyze_page(
         }
     }
 
+    Some(PageSkeleton {
+        blocks,
+        rows,
+        row_cy,
+        med_h,
+        table_rows,
+        boundaries,
+    })
+}
+
+/// Второй проход: сетка страницы по ЗАДАННЫМ границам колонок. Границы
+/// можно передать собственные (`PageSkeleton::boundaries`) или общие для
+/// всего документа — тогда индексы колонок совпадают у всех страниц, и
+/// роли шапки, выученные на одной из них, действуют на остальных.
+pub fn layout_page(
+    skel: PageSkeleton,
+    engine: Option<&OcrEngine>,
+    img: Option<&RgbImage>,
+    boundaries: &[f32],
+) -> Option<PageTable> {
+    let PageSkeleton {
+        blocks,
+        rows,
+        row_cy,
+        med_h,
+        table_rows,
+        boundaries: _,
+    } = skel;
+    let table_blocks: Vec<usize> = table_rows
+        .iter()
+        .flat_map(|&ti| rows[ti].iter().copied())
+        .collect();
+
+    // Похоже ли на таблицу: ≥2,0 блока на табличную строку. Двухколоночные
+    // списочные сметы «наименование | цена» — тоже таблица.
+    let avg_per_row = table_blocks.len() as f32 / table_rows.len() as f32;
+    if avg_per_row < 2.0 || rows.len() < 3 {
+        return None;
+    }
+    let debug = std::env::var("RUSTOCR_TABLE_DEBUG").is_ok();
+
     let bands: Vec<(f32, f32)> = if boundaries.is_empty() {
         let mut ivs: Vec<(f32, f32)> = table_blocks
             .iter()
@@ -303,7 +356,7 @@ pub fn analyze_page(
             .fold(f32::NEG_INFINITY, f32::max);
         let mut bs: Vec<(f32, f32)> = Vec::with_capacity(boundaries.len() + 1);
         let mut prev = left;
-        for &b in &boundaries {
+        for &b in boundaries {
             bs.push((prev, b));
             prev = b;
         }
@@ -312,13 +365,6 @@ pub fn analyze_page(
     };
     if bands.len() < 2 {
         return None; // один столбец — не таблица
-    }
-
-    // Похоже ли на таблицу: ≥2,0 блока на табличную строку. Двухколоночные
-    // списочные сметы «наименование | цена» — тоже таблица.
-    let avg_per_row = table_blocks.len() as f32 / table_rows.len() as f32;
-    if avg_per_row < 2.0 || rows.len() < 3 {
-        return None;
     }
 
     // 3) раскладка текста: куски блока → колонки; склеенные блоки режем
@@ -369,7 +415,7 @@ pub fn analyze_page(
             let x0 = cx - w / 2.0;
             let x1 = cx + w / 2.0;
             let mut cuts: Vec<f32> = Vec::new();
-            for &bnd in &boundaries {
+            for &bnd in boundaries {
                 if x0 + 6.0 < bnd && bnd < x1 - 6.0 {
                     cuts.push(bnd);
                 }
@@ -420,7 +466,7 @@ pub fn analyze_page(
     // 4) строки: слева направо; два куска в одной ячейке — склейка пробелом
     let mut out_rows: Vec<TableRow> = Vec::with_capacity(rows.len());
     for (ri, row) in rows.iter().enumerate() {
-        let columnar = row.len() >= 2 && is_columnar(row);
+        let columnar = row.len() >= 2 && row_is_columnar(&blocks, row, med_h);
         let mut pieces: Vec<(usize, usize, String, f32, f32)> = Vec::new();
         for &block_i in row.iter() {
             pieces.extend(placed[block_i].iter().cloned());
@@ -460,6 +506,42 @@ pub fn analyze_page(
         rows: out_rows,
         med_h,
     })
+}
+
+/// Строка похожа на табличную: ≥2 блока и широкий просвет между ними.
+fn row_is_columnar(blocks: &[&Block], m: &[usize], med_h: f32) -> bool {
+    if m.len() < 2 {
+        return false;
+    }
+    let mut xs: Vec<(f32, f32)> = m
+        .iter()
+        .map(|&i| {
+            let (cx, _, w, _) = block_geom(blocks[i]);
+            (cx - w / 2.0, cx + w / 2.0)
+        })
+        .collect();
+    xs.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+    let mut max_gap = 0.0f32;
+    for wnd in xs.windows(2) {
+        let g = wnd[1].0 - wnd[0].1;
+        if g > max_gap {
+            max_gap = g;
+        }
+    }
+    max_gap >= (med_h).max(25.0)
+}
+
+/// Анализ страницы: таблица, если похоже на неё (как в table.rs — иначе None,
+/// и вызывающий работает с простыми текстовыми строками).
+/// `engine` нужен только при наличии `img` (перечтение разрезанных ячеек).
+pub fn analyze_page(
+    engine: Option<&OcrEngine>,
+    img: Option<&RgbImage>,
+    r: &OcrResult,
+) -> Option<PageTable> {
+    let skel = page_skeleton(img, r)?;
+    let own = skel.boundaries.clone();
+    layout_page(skel, engine, img, &own)
 }
 
 /// Подрезать X-координаты углов четырёхугольника в полосу [a, b].

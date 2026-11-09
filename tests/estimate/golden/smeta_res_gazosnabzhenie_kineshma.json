@@ -1,10 +1,10 @@
 {
  "pages": 11,
  "sections": 1,
- "positions": 78,
- "resources": 35,
+ "positions": 72,
+ "resources": 37,
  "table_rows": 262,
- "unclassified_rows": 273,
+ "unclassified_rows": 270,
  "qty_price_checked": 18,
  "section_totals_checked": 1,
  "total": 93442.0,
@@ -14,6 +14,8 @@
   "section_total_mismatch"
  ],
  "warnings": [
+  "auto_repair",
+  "auto_repair",
   "position_duplicate",
   "position_missing",
   "position_no_numbers",
@@ -41,23 +43,6 @@
   "position_no_numbers",
   "position_no_numbers",
   "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
   "qty_price_mismatch",
   "qty_price_mismatch",
   "qty_price_mismatch",
@@ -68,8 +53,8 @@
  ],
  "sections_detail": [
   {
-   "title": "прямые затраты",
-   "positions": 78,
+   "title": "(без разделов)",
+   "positions": 72,
    "total": 93442.0
   }
  ]
