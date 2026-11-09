@@ -1,11 +1,11 @@
 {
  "pages": 5,
  "sections": 7,
- "positions": 52,
- "resources": 2,
+ "positions": 53,
+ "resources": 4,
  "table_rows": 96,
- "unclassified_rows": 96,
- "qty_price_checked": 20,
+ "unclassified_rows": 85,
+ "qty_price_checked": 21,
  "section_totals_checked": 1,
  "total": 1544414.6,
  "vat": 235588.66,
@@ -20,7 +20,6 @@
   "position_no_numbers",
   "position_no_numbers",
   "position_no_numbers",
-  "qty_price_mismatch",
   "qty_price_mismatch",
   "qty_price_mismatch",
   "qty_price_mismatch",
@@ -75,7 +74,7 @@
   },
   {
    "title": "Кровля",
-   "positions": 21,
+   "positions": 22,
    "total": 212817.22
   },
   {

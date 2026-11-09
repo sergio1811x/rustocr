@@ -1,10 +1,10 @@
 {
  "pages": 4,
  "sections": 2,
- "positions": 106,
+ "positions": 97,
  "resources": 0,
  "table_rows": 144,
- "unclassified_rows": 528,
+ "unclassified_rows": 519,
  "qty_price_checked": 0,
  "section_totals_checked": 1,
  "total": 1082006.66,
@@ -23,7 +23,7 @@
  "sections_detail": [
   {
    "title": "вес",
-   "positions": 100,
+   "positions": 91,
    "total": 1082006.66
   },
   {

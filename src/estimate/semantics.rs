@@ -92,15 +92,40 @@ pub fn parse_number(s: &str) -> Option<f64> {
 }
 
 /// Канонизация единицы измерения: «м2»/«М²» → «м²», «шт.» → «шт»,
-/// «маш.-ч» → «маш-ч».
+/// «маш.-ч» → «маш-ч». Донормализация раскладки: латинские буквы-омофоны
+/// (M2, M3, Mn, Maw, WT, ET, Me, K-T, MП) заменяются на русские единицы —
+/// «М» и «П» в русской раскладке падают на те же клавиши, что латинские
+/// V/T, а распознаватель возвращает их латиницей. «мл» как «м²» не
+/// трогаем: в сметах «мл» сам по себе не встречается, а вот подмена
+/// «м²» → «мл» встречается (см. корпус), поэтому «мл» → «м²» при
+/// сопутствующих признаках делает вызывающий код, не канонизация.
 pub fn normalize_unit(s: &str) -> String {
     let t = s.trim().to_lowercase().replace('\u{a0}', " ");
+    // латинские омофоны, характерные для единиц измерения:
+    // «м2» в латинице — «m2», «мп» — «mn»/«mп», «шт» — «et»/«шт»,
+    // «маш» — «maw»/«мaw», «к-т» — «k-t», «мест» — «me»/«мecт»
     let t = t
         .replace("м2", "м²")
         .replace("м3", "м³")
         .replace("м^2", "м²")
-        .replace("м^3", "м³");
+        .replace("м^3", "м³")
+        .replace("m2", "м²")
+        .replace("m3", "м³")
+        .replace("m^2", "м²")
+        .replace("m^3", "м³");
     let t: String = t.chars().filter(|c| *c != '.').collect();
+    let t = t.trim().to_string();
+    // однозначные латинские последовательности, которых в русских сметах
+    // не бывает, зато бывают при перепутанной раскладке
+    let t = match t.as_str() {
+        "mn" | "mп" | "мп" => "мп".to_string(),
+        "maw" | "мaw" => "маш".to_string(),
+        "wt" | "et" | "me" => "шт".to_string(),
+        "k-t" => "к-т".to_string(),
+        "mп" => "мп".to_string(),
+        "мл" => "мл".to_string(), // честное «мл» — редкая единица, оставляем
+        _ => t,
+    };
     t.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
@@ -269,6 +294,10 @@ fn role_of_header(text: &str) -> Option<Role> {
     }
     if t.contains("цена") || t.contains("за ед") || t.contains("стоимость единицы") {
         return Some(Role::Price);
+    }
+    if t == "итого" || t == "итого," {
+        // голая колонка «Итого» (коммерческие сметы с двухуровневой шапкой)
+        return Some(Role::Total);
     }
     if t.contains("всего") || t.contains("сумма") || t.contains("стоимост") || t.contains("затрат") {
         return Some(Role::Total);
@@ -842,7 +871,8 @@ fn mark_doc_totals(rows: &[DocRow]) -> Vec<bool> {
     let mut out = vec![false; rows.len()];
     for i in 0..rows.len() {
         // «Итого 2031228,96 2389,4»: первое слово — итоговое, дальше только числа
-        let toks: Vec<&str> = rows[i].lower().split_whitespace().collect();
+        let lower = rows[i].lower();
+        let toks: Vec<&str> = lower.split_whitespace().collect();
         let head = toks.first().copied().unwrap_or_default();
         if head != "итого" && head != "всего" {
             continue;
@@ -876,6 +906,10 @@ struct Parser {
     cur_position: Option<Position>,
     name_col: Option<usize>,
     roles: Vec<Option<Role>>,
+    /// колонки чисел последней строки-позиции (для различения
+    /// списочной строки от продолжения: у списочной единственное число
+    /// в той же колонке, что у предыдущей позиции)
+    prev_number_cols: Vec<usize>,
     saw_table_row: bool,
     saw_section: bool,
     totals: Totals,
@@ -1080,6 +1114,31 @@ impl Parser {
         // «(10 м³ основания) 82,01 3,65 25,55», «траншеях шириной до 2 м…»
         if self.cur_position.is_some() && self.is_position_continuation(&row) {
             if let Some(pos) = self.cur_position.as_mut() {
+                // чисто текстовое продолжение (без чисел и единиц) —
+                // склеиваем в название: «Устройство монолитного» +
+                // «фундамента из бетона В22,5»
+                let has_numbers = row
+                    .cells
+                    .iter()
+                    .any(|(_, _, t)| parse_number(t.trim()).is_some());
+                if !has_numbers {
+                    let text = row
+                        .cells
+                        .iter()
+                        .filter_map(|(_, _, t)| {
+                            let t = t.trim();
+                            (!t.is_empty() && parse_number(t).is_none() && !is_unit(t))
+                                .then_some(t)
+                        })
+                        .next()
+                        .map(|s| s.to_string());
+                    if let Some(text) = text {
+                        if !pos.name.starts_with('(') {
+                            pos.name.push(' ');
+                            pos.name.push_str(&text);
+                        }
+                    }
+                }
                 pos.raw.push(joined.clone());
                 if pos.pages.last() != Some(&row.page) {
                     pos.pages.push(row.page);
@@ -1118,13 +1177,19 @@ impl Parser {
     // --- роли колонок ---
 
     fn learn_roles(&mut self, row: &DocRow) {
-        for (col, _, text) in &row.cells {
+        for (col, span, text) in &row.cells {
             if let Some(role) = role_of_header(text) {
-                if self.roles.len() <= *col {
-                    self.roles.resize_with(*col + 1, || None);
+                // объединённая ячейка-группа («Стоимость материалов, машин и
+                // механизмов» на 2 колонки) описывает блок, а не отдельную
+                // колонку: роль вешаем на ПОСЛЕДНЮЮ колонку спана — там
+                // под-заголовок «Итого»/сумма, а «За ед» стартовой колонки
+                // не затирается (двухуровневые шапки коммерческих смет)
+                let target = if *span > 1 { col + span - 1 } else { *col };
+                if self.roles.len() <= target {
+                    self.roles.resize_with(target + 1, || None);
                 }
-                if self.roles[*col].is_none() {
-                    self.roles[*col] = Some(role);
+                if self.roles[target].is_none() {
+                    self.roles[target] = Some(role);
                 }
             }
         }
@@ -1151,6 +1216,17 @@ impl Parser {
         }
         if resource_kind(&row.lower()).is_some() {
             return false;
+        }
+        // списочная строка «труба для заезда | 54000»: одно число,
+        // и оно в той же колонке, что числа предыдущей позиции — это
+        // НОВАЯ позиция, а не продолжение (ГС-продолжения несут числа
+        // в других колонках — трудоёмкость, маш.-ч)
+        let numbers = row.numbers();
+        if numbers.len() == 1 {
+            let (ncol, _, _) = numbers[0];
+            if self.prev_number_cols.contains(&ncol) {
+                return false;
+            }
         }
         let first_text = row.cells.iter().find(|(_, _, t)| {
             let t = t.trim();
@@ -1423,6 +1499,7 @@ impl Parser {
         };
 
         let (qty, price, total) = self.pick_position_numbers(&numbers, dropped_zero);
+        self.prev_number_cols = numbers.iter().map(|(c, _, _)| *c).collect();
 
         Some(Position {
             line: line.map(|(_, v)| v),
@@ -1451,9 +1528,32 @@ impl Parser {
             }
             None
         };
+        // итог позиции — в ПРАВОЙ колонке с ролью Total: при
+        // двухуровневой шапке «За ед | Итого» ×2 + «Итого» промежуточные
+        // суммы материалов/работ тоже помечены Total, позиционный итог —
+        // крайний правый
+        let total_by_role = |numbers: &[(usize, f64, String)]| -> Option<Num> {
+            let mut last = None;
+            for (col, v, raw) in numbers {
+                if self.role_at(*col) == Some(Role::Total) && *v != 0.0 {
+                    last = Some(Num::new(*v, raw.clone()));
+                }
+            }
+            last
+        };
+        // цена — первый ненулевой Price (при «За ед»×2 нулевая цена
+        // материалов означает строку работ)
+        let price_by_role = |numbers: &[(usize, f64, String)]| -> Option<Num> {
+            for (col, v, raw) in numbers {
+                if self.role_at(*col) == Some(Role::Price) && *v != 0.0 {
+                    return Some(Num::new(*v, raw.clone()));
+                }
+            }
+            None
+        };
         let qty = by_role(Role::Qty);
-        let price = by_role(Role::Price);
-        let total = by_role(Role::Total);
+        let price = price_by_role(numbers);
+        let total = total_by_role(numbers);
         if qty.is_some() || price.is_some() || total.is_some() {
             return (qty, price, total);
         }
@@ -1534,8 +1634,14 @@ impl Parser {
             // «НР (4596,89 руб.): 80%*0,94 от ФОТ» — сумма в скобках, а не в
             // процентах/коэффициентах; иначе — наибольшее число строки
             let (qty, price, total) = if cost_like {
-                let v = paren_number(&joined)
-                    .or_else(|| numbers.iter().map(|(_, v, _)| *v).fold(f64::NEG_INFINITY, f64::max));
+                let v = paren_number(&joined).or_else(|| {
+                    numbers
+                        .iter()
+                        .map(|(_, v, _)| *v)
+                        .fold(f64::NEG_INFINITY, f64::max)
+                        .max(-1.0)
+                        .into()
+                });
                 match v {
                     Some(v) => (None, None, Some(Num::new(v, extract_number_raw(&joined).unwrap_or_default()))),
                     None => (None, None, None),
@@ -1910,6 +2016,7 @@ impl Parser {
                 stats: self.stats,
             },
             unparsed_lines: self.unparsed,
+            auto_repairs: 0,
             pages: self.pages,
         }
     }

@@ -2,9 +2,9 @@
  "pages": 2,
  "sections": 2,
  "positions": 17,
- "resources": 3,
+ "resources": 4,
  "table_rows": 47,
- "unclassified_rows": 39,
+ "unclassified_rows": 40,
  "qty_price_checked": 0,
  "section_totals_checked": 1,
  "total": 1.3104761309357213e+17,
@@ -15,6 +15,8 @@
   "section_total_mismatch"
  ],
  "warnings": [
+  "auto_repair",
+  "auto_repair",
   "position_no_name",
   "position_no_name",
   "position_no_name",

@@ -1,8 +1,8 @@
 {
  "pages": 5,
- "sections": 3,
- "positions": 54,
- "resources": 4,
+ "sections": 4,
+ "positions": 50,
+ "resources": 6,
  "table_rows": 109,
  "unclassified_rows": 115,
  "qty_price_checked": 7,
@@ -43,24 +43,27 @@
   "position_no_numbers",
   "position_no_numbers",
   "position_no_numbers",
-  "position_no_numbers",
   "qty_price_mismatch",
   "qty_price_mismatch",
   "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
+  "section_total_missing",
   "section_total_missing",
   "unclassified_rows"
  ],
  "sections_detail": [
   {
    "title": "Ограждение длиной 244 м.п. 97 пролетов 4 5 6 7 8 9 10 11",
-   "positions": 49,
+   "positions": 44,
    "total": null
   },
   {
    "title": "Погрузка и перевозка мусора",
-   "positions": 5,
+   "positions": 2,
+   "total": null
+  },
+  {
+   "title": "Итого Строительные работы",
+   "positions": 4,
    "total": 873.77
   },
   {

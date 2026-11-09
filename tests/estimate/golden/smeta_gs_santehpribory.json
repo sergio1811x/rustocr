@@ -1,11 +1,11 @@
 {
  "pages": 6,
  "sections": 4,
- "positions": 53,
- "resources": 4,
+ "positions": 49,
+ "resources": 6,
  "table_rows": 91,
- "unclassified_rows": 157,
- "qty_price_checked": 34,
+ "unclassified_rows": 156,
+ "qty_price_checked": 32,
  "section_totals_checked": 1,
  "total": 115.59,
  "vat": null,
@@ -15,11 +15,8 @@
   "section_total_mismatch"
  ],
  "warnings": [
-  "position_duplicate",
+  "auto_repair",
   "position_missing",
-  "position_no_name",
-  "position_no_name",
-  "position_no_name",
   "qty_price_mismatch",
   "qty_price_mismatch",
   "qty_price_mismatch",
@@ -34,14 +31,6 @@
   "qty_price_mismatch",
   "qty_price_mismatch",
   "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "section_total_missing",
   "section_total_missing",
   "section_total_missing",
   "unclassified_rows"
@@ -49,22 +38,22 @@
  "sections_detail": [
   {
    "title": "Канализация - установка приборов",
-   "positions": 21,
+   "positions": 18,
    "total": null
   },
   {
    "title": "Водопровод - трубы металлопластиковые",
-   "positions": 22,
+   "positions": 20,
    "total": null
   },
   {
    "title": "Погрузо-разгрузочные работы",
-   "positions": 9,
+   "positions": 11,
    "total": 115.59
   },
   {
    "title": "Гра анд-CMETA",
-   "positions": 1,
+   "positions": 0,
    "total": null
   }
  ]

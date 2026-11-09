@@ -1,11 +1,11 @@
 {
  "pages": 13,
- "sections": 12,
- "positions": 124,
- "resources": 4,
+ "sections": 11,
+ "positions": 131,
+ "resources": 20,
  "table_rows": 241,
- "unclassified_rows": 299,
- "qty_price_checked": 49,
+ "unclassified_rows": 301,
+ "qty_price_checked": 57,
  "section_totals_checked": 9,
  "total": 3074.95,
  "vat": null,
@@ -23,6 +23,28 @@
   "section_total_mismatch"
  ],
  "warnings": [
+  "auto_repair",
+  "auto_repair",
+  "auto_repair",
+  "auto_repair",
+  "auto_repair",
+  "auto_repair",
+  "auto_repair",
+  "auto_repair",
+  "auto_repair",
+  "auto_repair",
+  "auto_repair",
+  "auto_repair",
+  "auto_repair",
+  "auto_repair",
+  "auto_repair",
+  "auto_repair",
+  "auto_repair",
+  "auto_repair",
+  "auto_repair",
+  "auto_repair",
+  "auto_repair",
+  "auto_repair",
   "position_no_name",
   "position_no_name",
   "position_no_name",
@@ -32,6 +54,27 @@
   "position_no_numbers",
   "position_no_numbers",
   "position_no_numbers",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
   "qty_price_mismatch",
   "qty_price_mismatch",
   "qty_price_mismatch",
@@ -62,47 +105,42 @@
  "sections_detail": [
   {
    "title": "ФУНДАМЕНТЫ",
-   "positions": 13,
+   "positions": 14,
    "total": 294.66
   },
   {
    "title": "СТЕНЫ",
-   "positions": 19,
-   "total": 771.47
+   "positions": 20,
+   "total": 86120.0
   },
   {
    "title": "Перегородки",
-   "positions": 2,
+   "positions": 3,
    "total": 308.62
   },
   {
    "title": "ПЕРЕКРЫТИЕ",
-   "positions": 19,
+   "positions": 20,
    "total": 418.9
   },
   {
    "title": "Покрытие.кровля",
-   "positions": 21,
-   "total": 994.44
+   "positions": 22,
+   "total": 105066.0
   },
   {
    "title": "ОКНА",
    "positions": 7,
-   "total": 2001.0
-  },
-  {
-   "title": "Накладные расходы",
-   "positions": 1,
    "total": 2976.0
   },
   {
    "title": "БАЛКОННЫЕ ПЛАСТИКОВЫЕ",
-   "positions": 12,
+   "positions": 13,
    "total": 63.84
   },
   {
    "title": "Полы",
-   "positions": 10,
+   "positions": 11,
    "total": 64.64
   },
   {
@@ -112,7 +150,7 @@
   },
   {
    "title": "потолки",
-   "positions": 20,
+   "positions": 21,
    "total": 3092.94
   },
   {

@@ -4,6 +4,7 @@
 //! которые парсер не понял.
 
 use crate::estimate::model::*;
+use crate::estimate::repair;
 
 /// Допуск для «количество × цена = сумма» (округления в сметах обычны).
 const QTY_PRICE_TOL: f64 = 0.02; // 2%
@@ -13,6 +14,11 @@ const TOTAL_TOL_RUB: f64 = 2.0;
 const TOTAL_TOL_SHARE: f64 = 0.005; // 0.5%
 
 pub fn validate(doc: &mut EstimateDocument) {
+    // СНАЧАЛА авто-починка: она меняет значения, а валидация ниже уже
+    // проверяет починенный документ и не генерит ложных ошибок про
+    // расхождения, которые мы сами устранили.
+    let notes = repair::repair(doc);
+
     let mut rep = std::mem::take(&mut doc.validation);
     rep.errors.clear();
     rep.warnings.clear();
@@ -24,6 +30,11 @@ pub fn validate(doc: &mut EstimateDocument) {
         unclassified_rows,
         ..Default::default()
     };
+
+    // отчёт о починках — в warnings, одной строкой на починку
+    for n in &notes {
+        rep.warn("auto_repair", n.clone(), None);
+    }
 
     // --- позиции: количество × цена = сумма ---
     let sections = doc.sections.clone();
@@ -358,6 +369,7 @@ mod tests {
             },
             validation: ValidationReport::default(),
             unparsed_lines: Vec::new(),
+            auto_repairs: 0,
             pages: 1,
         };
         validate(&mut doc);
@@ -388,6 +400,7 @@ mod tests {
             },
             validation: ValidationReport::default(),
             unparsed_lines: Vec::new(),
+            auto_repairs: 0,
             pages: 1,
         };
         validate(&mut doc);
@@ -416,6 +429,7 @@ mod tests {
             totals: Totals::default(),
             validation: ValidationReport::default(),
             unparsed_lines: Vec::new(),
+            auto_repairs: 0,
             pages: 1,
         };
         validate(&mut doc);

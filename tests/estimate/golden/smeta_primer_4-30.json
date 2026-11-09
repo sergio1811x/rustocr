@@ -1,11 +1,11 @@
 {
  "pages": 7,
  "sections": 16,
- "positions": 122,
+ "positions": 97,
  "resources": 50,
  "table_rows": 369,
- "unclassified_rows": 438,
- "qty_price_checked": 79,
+ "unclassified_rows": 428,
+ "qty_price_checked": 67,
  "section_totals_checked": 5,
  "total": null,
  "vat": 822656.01,
@@ -47,37 +47,6 @@
   "qty_price_mismatch",
   "qty_price_mismatch",
   "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
   "section_total_missing",
   "section_total_missing",
   "section_total_missing",
@@ -94,27 +63,27 @@
   },
   {
    "title": "изделия",
-   "positions": 23,
-   "total": 42.32
+   "positions": 19,
+   "total": 746846.71
   },
   {
    "title": "; Электроос свещен ние",
-   "positions": 50,
+   "positions": 38,
    "total": 20.64
   },
   {
    "title": "винтами или болтами для",
-   "positions": 12,
-   "total": 0.07
+   "positions": 9,
+   "total": 134043.26
   },
   {
    "title": "винтами или − болтами для",
-   "positions": 25,
+   "positions": 21,
    "total": 1.36
   },
   {
    "title": "винтами или болтами для",
-   "positions": 12,
+   "positions": 10,
    "total": 5392967.15
   },
   {
