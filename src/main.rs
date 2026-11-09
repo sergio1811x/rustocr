@@ -1,8 +1,11 @@
 //! RustOCR — быстрый серверный OCR (RU+EN).
 //! Режимы: `rustocr serve [--port N]` — HTTP-сервис;
-//! `rustocr <картинка|pdf> [--json] [--xlsx out.xlsx]` — CLI.
+//! `rustocr <картинка|pdf> [--json] [--xlsx out.xlsx]` — CLI;
+//! `rustocr <pdf> --estimate [out.json]` — сметный конвейер: иерархия
+//! раздел → позиция → ресурсы + валидация; `--pazl [out.json]` — DTO ПАЗЛ.
 
 mod det;
+mod estimate;
 mod geom;
 mod imgio;
 mod pdf;
@@ -13,7 +16,7 @@ mod table;
 
 use anyhow::Result;
 use pipeline::{EngineOptions, OcrEngine, OcrResult};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 fn setup_env() {
@@ -34,6 +37,10 @@ fn setup_env() {
 struct CliCfg {
     json_out: bool,
     xlsx: Option<PathBuf>,
+    /// Some(None) — вывести в stdout; Some(Some(p)) — записать в файл
+    estimate: Option<Option<PathBuf>>,
+    /// DTO ПАЗЛ (LLM-парсер, если настроен, иначе правила)
+    pazl: Option<Option<PathBuf>>,
     dpi: u32,
     jobs: Option<usize>,
 }
@@ -82,10 +89,16 @@ async fn main() -> Result<()> {
     let mut cfg = CliCfg {
         json_out: false,
         xlsx: None,
+        estimate: None,
+        pazl: None,
         dpi: pdf::dpi_from_env(),
         jobs: std::env::var("RUSTOCR_JOBS")
             .ok()
             .and_then(|v| v.parse().ok()),
+    };
+    let is_flag = |s: &str| {
+        s.starts_with('-')
+            || matches!(s, "serve")
     };
     let mut i = 0;
     while i < args.len() {
@@ -98,6 +111,24 @@ async fn main() -> Result<()> {
                 i += 1;
             }
             "--json" => cfg.json_out = true,
+            "--estimate" => {
+                cfg.estimate = Some(match args.get(i + 1) {
+                    Some(v) if !is_flag(v) => {
+                        i += 1;
+                        Some(PathBuf::from(v))
+                    }
+                    _ => None,
+                });
+            }
+            "--pazl" => {
+                cfg.pazl = Some(match args.get(i + 1) {
+                    Some(v) if !is_flag(v) => {
+                        i += 1;
+                        Some(PathBuf::from(v))
+                    }
+                    _ => None,
+                });
+            }
             "--xlsx" => {
                 if let Some(v) = args.get(i + 1) {
                     cfg.xlsx = Some(PathBuf::from(v));
@@ -236,6 +267,62 @@ fn cli(
         }
         let n = table::write_xlsx(&engine, &imgs, &ress, xlsx_path)?;
         eprintln!("-- Excel: {} лист(ов) → {}", n, xlsx_path.display());
+    }
+
+    // сметный конвейер: иерархия + валидация (+ DTO ПАЗЛ)
+    if cfg.estimate.is_some() || cfg.pazl.is_some() {
+        for (path, (imgs, ress)) in files.iter().zip(xlsx_pages.iter()) {
+            let t0 = std::time::Instant::now();
+            let pages: Vec<estimate::PageInput> = ress
+                .iter()
+                .enumerate()
+                .map(|(n, r)| estimate::PageInput {
+                    page: n + 1,
+                    img: imgs.get(n),
+                    result: r,
+                })
+                .collect();
+            let doc = estimate::parse_estimate(Some(&engine), &pages);
+            eprintln!(
+                "-- Смета {}: разделов {}, позиций {}, ресурсов {}, ошибок валидации {}, предупреждений {} ({:?})",
+                path.display(),
+                doc.validation.stats.sections,
+                doc.validation.stats.positions,
+                doc.validation.stats.resources,
+                doc.validation.errors.len(),
+                doc.validation.warnings.len(),
+                t0.elapsed()
+            );
+            if let Some(out) = &cfg.estimate {
+                let mut v = serde_json::to_value(&doc)?;
+                v["file"] = serde_json::json!(path.display().to_string());
+                emit_json(&v, out.as_deref(), "estimate")?;
+            }
+            if let Some(out) = &cfg.pazl {
+                let (dto, parser, llm_err) = estimate::pazl::parse_pazl(&doc);
+                let mut v = serde_json::to_value(&dto)?;
+                v["file"] = serde_json::json!(path.display().to_string());
+                v["parser"] = serde_json::json!(parser);
+                if let Some(e) = llm_err {
+                    v["llm_error"] = serde_json::json!(e);
+                    eprintln!("-- LLM-парсер не сработал ({}), использованы правила", e);
+                }
+                emit_json(&v, out.as_deref(), "pazl")?;
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Записать JSON в файл или вывести в stdout.
+fn emit_json(v: &serde_json::Value, out: Option<&Path>, tag: &str) -> Result<()> {
+    let s = serde_json::to_string_pretty(v)?;
+    match out {
+        Some(p) => {
+            std::fs::write(p, s)?;
+            eprintln!("-- {}: {}", tag, p.display());
+        }
+        None => println!("{}", s),
     }
     Ok(())
 }

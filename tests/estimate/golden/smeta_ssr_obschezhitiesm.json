@@ -1,0 +1,28 @@
+{
+ "pages": 3,
+ "sections": 1,
+ "positions": 19,
+ "resources": 0,
+ "table_rows": 44,
+ "unclassified_rows": 36,
+ "qty_price_checked": 2,
+ "section_totals_checked": 1,
+ "total": 47006.03,
+ "vat": null,
+ "total_with_vat": null,
+ "errors": [
+  "section_total_mismatch"
+ ],
+ "warnings": [
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "unclassified_rows"
+ ],
+ "sections_detail": [
+  {
+   "title": "поглаве",
+   "positions": 19,
+   "total": 47006.03
+  }
+ ]
+}

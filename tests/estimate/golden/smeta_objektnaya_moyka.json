@@ -1,0 +1,39 @@
+{
+ "pages": 2,
+ "sections": 2,
+ "positions": 12,
+ "resources": 0,
+ "table_rows": 20,
+ "unclassified_rows": 26,
+ "qty_price_checked": 6,
+ "section_totals_checked": 2,
+ "total": null,
+ "vat": null,
+ "total_with_vat": null,
+ "errors": [
+  "section_total_mismatch",
+  "section_total_mismatch"
+ ],
+ "warnings": [
+  "doc_total_missing",
+  "position_no_name",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "unclassified_rows"
+ ],
+ "sections_detail": [
+  {
+   "title": "(без разделов)",
+   "positions": 7,
+   "total": 321402374.07
+  },
+  {
+   "title": "расчеты\"",
+   "positions": 5,
+   "total": 74.07
+  }
+ ]
+}

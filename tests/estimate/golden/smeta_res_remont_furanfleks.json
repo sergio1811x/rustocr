@@ -1,0 +1,42 @@
+{
+ "pages": 2,
+ "sections": 2,
+ "positions": 17,
+ "resources": 3,
+ "table_rows": 47,
+ "unclassified_rows": 39,
+ "qty_price_checked": 0,
+ "section_totals_checked": 1,
+ "total": 1.3104761309357213e+17,
+ "vat": null,
+ "total_with_vat": null,
+ "errors": [
+  "doc_total_mismatch",
+  "section_total_mismatch"
+ ],
+ "warnings": [
+  "position_no_name",
+  "position_no_name",
+  "position_no_name",
+  "position_no_name",
+  "position_no_name",
+  "position_no_name",
+  "position_no_name",
+  "position_no_numbers",
+  "position_no_numbers",
+  "section_total_missing",
+  "unclassified_rows"
+ ],
+ "sections_detail": [
+  {
+   "title": "Ремонт дымоходов с использованием гибких полимерных руковов ",
+   "positions": 15,
+   "total": null
+  },
+  {
+   "title": "кондиционирование воздуха)",
+   "positions": 2,
+   "total": 1.1287261309357213e+17
+  }
+ ]
+}

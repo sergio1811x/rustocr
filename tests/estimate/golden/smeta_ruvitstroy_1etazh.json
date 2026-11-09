@@ -1,0 +1,66 @@
+{
+ "pages": 5,
+ "sections": 7,
+ "positions": 134,
+ "resources": 4,
+ "table_rows": 181,
+ "unclassified_rows": 76,
+ "qty_price_checked": 72,
+ "section_totals_checked": 6,
+ "total": null,
+ "vat": null,
+ "total_with_vat": null,
+ "errors": [
+  "section_total_mismatch",
+  "section_total_mismatch",
+  "section_total_mismatch",
+  "section_total_mismatch",
+  "section_total_mismatch",
+  "section_total_mismatch"
+ ],
+ "warnings": [
+  "doc_total_missing",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "unclassified_rows"
+ ],
+ "sections_detail": [
+  {
+   "title": "фундамент",
+   "positions": 24,
+   "total": 9847.0
+  },
+  {
+   "title": "Кладка",
+   "positions": 19,
+   "total": 8156.0
+  },
+  {
+   "title": "Монолитные работы",
+   "positions": 28,
+   "total": 9668.0
+  },
+  {
+   "title": "Монтажные работы",
+   "positions": 14,
+   "total": 4013.0
+  },
+  {
+   "title": "Устройство стяжки пола",
+   "positions": 18,
+   "total": 6865.0
+  },
+  {
+   "title": "Кровля",
+   "positions": 31,
+   "total": 332.0
+  },
+  {
+   "title": "вентканалы",
+   "positions": 0,
+   "total": null
+  }
+ ]
+}

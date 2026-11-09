@@ -1,0 +1,59 @@
+{
+ "pages": 3,
+ "sections": 3,
+ "positions": 100,
+ "resources": 1,
+ "table_rows": 167,
+ "unclassified_rows": 116,
+ "qty_price_checked": 23,
+ "section_totals_checked": 1,
+ "total": 825826.0,
+ "vat": null,
+ "total_with_vat": null,
+ "errors": [
+  "section_total_mismatch"
+ ],
+ "warnings": [
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "unclassified_rows"
+ ],
+ "sections_detail": [
+  {
+   "title": "строительство",
+   "positions": 100,
+   "total": 825826.0
+  },
+  {
+   "title": "с ТРОИМ",
+   "positions": 0,
+   "total": null
+  },
+  {
+   "title": "строительного мусора",
+   "positions": 0,
+   "total": null
+  }
+ ]
+}

@@ -1,0 +1,61 @@
+{
+ "pages": 4,
+ "sections": 4,
+ "positions": 30,
+ "resources": 2,
+ "table_rows": 61,
+ "unclassified_rows": 108,
+ "qty_price_checked": 16,
+ "section_totals_checked": 1,
+ "total": 860.96,
+ "vat": null,
+ "total_with_vat": null,
+ "errors": [
+  "doc_total_mismatch",
+  "section_total_mismatch"
+ ],
+ "warnings": [
+  "position_no_name",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "section_total_missing",
+  "section_total_missing",
+  "section_total_missing",
+  "unclassified_rows"
+ ],
+ "sections_detail": [
+  {
+   "title": "Ворота (демонтаж)",
+   "positions": 15,
+   "total": null
+  },
+  {
+   "title": "Изоляция воротин изделиями из пе ног ласта",
+   "positions": 3,
+   "total": null
+  },
+  {
+   "title": "Устройство ростверка",
+   "positions": 2,
+   "total": null
+  },
+  {
+   "title": "Усиление колонн",
+   "positions": 10,
+   "total": 860.96
+  }
+ ]
+}

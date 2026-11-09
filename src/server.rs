@@ -1,4 +1,5 @@
-//! HTTP-сервер (Axum): /ocr, /ocr/json, /health, демо-страница на /.
+//! HTTP-сервер (Axum): /ocr, /ocr/json, /estimate, /estimate/pazl,
+//! /health, демо-страница на /.
 
 use crate::pipeline::OcrEngine;
 use axum::body::Bytes;
@@ -72,6 +73,8 @@ pub async fn serve(engine: Arc<OcrEngine>, port: u16) -> anyhow::Result<()> {
         .route("/health", get(health))
         .route("/ocr", post(ocr_any))
         .route("/ocr/json", post(ocr_json))
+        .route("/estimate", post(estimate_any))
+        .route("/estimate/pazl", post(estimate_pazl_any))
         .layer(axum::extract::DefaultBodyLimit::max(MAX_BODY))
         .with_state(state);
     let addr = format!("0.0.0.0:{}", port);
@@ -101,16 +104,73 @@ async fn ocr_any(State(st): State<AppState>, req: Request) -> Response {
             "требуется заголовок X-API-Key".to_string(),
         );
     }
+    let bytes = match extract_file_bytes(req).await {
+        Ok(b) => b,
+        Err(r) => return r,
+    };
+    if bytes.is_empty() {
+        return err(
+            StatusCode::BAD_REQUEST,
+            "пустое тело запроса — пришлите картинку (PNG/JPEG)".to_string(),
+        );
+    }
+    process_doc(st, bytes, DocMode::Ocr).await
+}
+
+/// POST /estimate — смета (картинка/PDF) → иерархический JSON + валидация.
+async fn estimate_any(State(st): State<AppState>, req: Request) -> Response {
+    if !check_api_key(req.headers()) {
+        return err(
+            StatusCode::UNAUTHORIZED,
+            "требуется заголовок X-API-Key".to_string(),
+        );
+    }
+    let bytes = match extract_file_bytes(req).await {
+        Ok(b) => b,
+        Err(r) => return r,
+    };
+    if bytes.is_empty() {
+        return err(
+            StatusCode::BAD_REQUEST,
+            "пустое тело запроса — пришлите смету (PNG/JPEG/PDF)".to_string(),
+        );
+    }
+    process_doc(st, bytes, DocMode::Estimate).await
+}
+
+/// POST /estimate/pazl — смета → DTO ПАЗЛ (LLM-парсер, если настроен).
+async fn estimate_pazl_any(State(st): State<AppState>, req: Request) -> Response {
+    if !check_api_key(req.headers()) {
+        return err(
+            StatusCode::UNAUTHORIZED,
+            "требуется заголовок X-API-Key".to_string(),
+        );
+    }
+    let bytes = match extract_file_bytes(req).await {
+        Ok(b) => b,
+        Err(r) => return r,
+    };
+    if bytes.is_empty() {
+        return err(
+            StatusCode::BAD_REQUEST,
+            "пустое тело запроса — пришлите смету (PNG/JPEG/PDF)".to_string(),
+        );
+    }
+    process_doc(st, bytes, DocMode::EstimatePazl).await
+}
+
+/// Вытащить байты файла: сырые байты тела или multipart-поле file/image.
+async fn extract_file_bytes(req: Request) -> Result<Bytes, Response> {
     let ct = req
         .headers()
         .get(header::CONTENT_TYPE)
         .and_then(|v| v.to_str().ok())
         .unwrap_or("")
         .to_string();
-    let bytes = if ct.starts_with("multipart/form-data") {
+    if ct.starts_with("multipart/form-data") {
         let mut mp = match Multipart::from_request(req, &()).await {
             Ok(m) => m,
-            Err(e) => return err(StatusCode::BAD_REQUEST, format!("multipart: {}", e)),
+            Err(e) => return Err(err(StatusCode::BAD_REQUEST, format!("multipart: {}", e))),
         };
         let mut found: Option<Bytes> = None;
         loop {
@@ -120,7 +180,10 @@ async fn ocr_any(State(st): State<AppState>, req: Request) -> Response {
                     let bytes = match field.bytes().await {
                         Ok(b) => b,
                         Err(e) => {
-                            return err(StatusCode::BAD_REQUEST, format!("поле {}: {}", name, e))
+                            return Err(err(
+                                StatusCode::BAD_REQUEST,
+                                format!("поле {}: {}", name, e),
+                            ))
                         }
                     };
                     if !bytes.is_empty() && (found.is_none() || name == "file" || name == "image")
@@ -129,31 +192,22 @@ async fn ocr_any(State(st): State<AppState>, req: Request) -> Response {
                     }
                 }
                 Ok(None) => break,
-                Err(e) => return err(StatusCode::BAD_REQUEST, format!("multipart: {}", e)),
+                Err(e) => return Err(err(StatusCode::BAD_REQUEST, format!("multipart: {}", e))),
             }
         }
         match found {
-            Some(b) => b,
-            None => {
-                return err(
-                    StatusCode::BAD_REQUEST,
-                    "в multipart-запросе нет файла".to_string(),
-                )
-            }
+            Some(b) => Ok(b),
+            None => Err(err(
+                StatusCode::BAD_REQUEST,
+                "в multipart-запросе нет файла".to_string(),
+            )),
         }
     } else {
         match axum::body::to_bytes(req.into_body(), MAX_BODY).await {
-            Ok(b) => b,
-            Err(e) => return err(StatusCode::PAYLOAD_TOO_LARGE, format!("тело: {}", e)),
+            Ok(b) => Ok(b),
+            Err(e) => Err(err(StatusCode::PAYLOAD_TOO_LARGE, format!("тело: {}", e))),
         }
-    };
-    if bytes.is_empty() {
-        return err(
-            StatusCode::BAD_REQUEST,
-            "пустое тело запроса — пришлите картинку (PNG/JPEG)".to_string(),
-        );
     }
-    process_image(st, bytes).await
 }
 
 #[derive(Deserialize)]
@@ -185,10 +239,21 @@ async fn ocr_json(
         Ok(b) => Bytes::from(b),
         Err(e) => return err(StatusCode::BAD_REQUEST, format!("base64: {}", e)),
     };
-    process_image(st, bytes).await
+    process_doc(st, bytes, DocMode::Ocr).await
 }
 
-async fn process_image(st: AppState, bytes: Bytes) -> Response {
+/// Режим обработки документа.
+#[derive(Clone, Copy)]
+enum DocMode {
+    /// обычный OCR-ответ (текст + блоки)
+    Ocr,
+    /// иерархия сметы + валидация
+    Estimate,
+    /// DTO ПАЗЛ
+    EstimatePazl,
+}
+
+async fn process_doc(st: AppState, bytes: Bytes, mode: DocMode) -> Response {
     let engine = st.engine.clone();
     let permit = match st.sem.clone().acquire_owned().await {
         Ok(p) => p,
@@ -210,36 +275,77 @@ async fn process_image(st: AppState, bytes: Bytes) -> Response {
             }
             let dpi = crate::pdf::dpi_from_env();
             let t0 = std::time::Instant::now();
-            let t1 = t0;
             let mut pages = Vec::with_capacity(n);
+            let mut rows: Vec<crate::estimate::semantics::DocRow> = Vec::new();
             let mut skipped = 0usize;
-            // рендер порциями: память не растёт с толщиной PDF
+            let mut render_ms = 0u64;
+            // рендер порциями: память не растёт с толщиной PDF; в сметных
+            // режимах страницы разбираются сразу — картинки не копятся
             for first in (1..=n as u32).step_by(crate::pdf::CHUNK_PAGES) {
                 let last = (first + crate::pdf::CHUNK_PAGES as u32 - 1).min(n as u32);
+                let t_r = std::time::Instant::now();
                 let images = job.render_range(&pdf_path, first, last, dpi)?;
+                render_ms += t_r.elapsed().as_millis() as u64;
                 for (k, img) in images.into_iter().enumerate() {
                     let page_no = first as usize + k;
                     let r = engine.recognize(&img)?;
                     skipped += r.skipped;
-                    let mut v = r.to_json();
-                    v["page"] = serde_json::json!(page_no);
-                    pages.push(v);
+                    match mode {
+                        DocMode::Ocr => {
+                            let mut v = r.to_json();
+                            v["page"] = serde_json::json!(page_no);
+                            pages.push(v);
+                        }
+                        DocMode::Estimate | DocMode::EstimatePazl => {
+                            rows.extend(crate::estimate::page_rows(
+                                Some(&engine),
+                                Some(&img),
+                                &r,
+                                page_no,
+                            ));
+                        }
+                    }
                 }
             }
-            let render_ms = t0.elapsed().as_millis() as u64;
-            let ocr_ms = t1.elapsed().as_millis() as u64;
-            let text = pages
-                .iter()
-                .map(|p| p["text"].as_str().unwrap_or(""))
-                .collect::<Vec<_>>()
-                .join("\n\n");
-            Ok(serde_json::json!({
-                "pages": pages,
-                "text": text,
-                "skipped_fragments": skipped,
-                "timing_ms": {"render": render_ms, "ocr": ocr_ms,
-                                 "total": render_ms + ocr_ms},
-            }))
+            let total_ms = t0.elapsed().as_millis() as u64;
+            let ocr_ms = total_ms.saturating_sub(render_ms);
+            match mode {
+                DocMode::Ocr => {
+                    let text = pages
+                        .iter()
+                        .map(|p| p["text"].as_str().unwrap_or(""))
+                        .collect::<Vec<_>>()
+                        .join("\n\n");
+                    Ok(serde_json::json!({
+                        "pages": pages,
+                        "text": text,
+                        "skipped_fragments": skipped,
+                        "timing_ms": {"render": render_ms, "ocr": ocr_ms,
+                                         "total": total_ms},
+                    }))
+                }
+                DocMode::Estimate => {
+                    let doc = crate::estimate::parse_rows(rows, n);
+                    let mut v = serde_json::to_value(&doc)
+                        .map_err(|e| anyhow::anyhow!("сериализация сметы: {}", e))?;
+                    v["timing_ms"] = serde_json::json!({
+                        "render": render_ms, "ocr": ocr_ms, "total": total_ms });
+                    Ok(v)
+                }
+                DocMode::EstimatePazl => {
+                    let doc = crate::estimate::parse_rows(rows, n);
+                    let (dto, parser, llm_err) = crate::estimate::pazl::parse_pazl(&doc);
+                    let mut v = serde_json::to_value(&dto)
+                        .map_err(|e| anyhow::anyhow!("сериализация DTO: {}", e))?;
+                    v["parser"] = serde_json::json!(parser);
+                    if let Some(e) = llm_err {
+                        v["llm_error"] = serde_json::json!(e);
+                    }
+                    v["timing_ms"] = serde_json::json!({
+                        "render": render_ms, "ocr": ocr_ms, "total": total_ms });
+                    Ok(v)
+                }
+            }
         })
         .await;
         drop(permit);
@@ -249,17 +355,38 @@ async fn process_image(st: AppState, bytes: Bytes) -> Response {
             Err(e) => err(StatusCode::INTERNAL_SERVER_ERROR, format!("worker: {}", e)),
         };
     }
-    let res = tokio::task::spawn_blocking(move || -> anyhow::Result<crate::pipeline::OcrResult> {
+    let res = tokio::task::spawn_blocking(move || -> anyhow::Result<serde_json::Value> {
         // лимиты декодирования — защита от «декомпрессионной бомбы»
         let img = crate::imgio::decode_bytes(&bytes)?;
         let mut rgb = img.to_rgb8();
         crate::imgio::flatten_if_faded(&mut rgb);
-        engine.recognize(&rgb)
+        let r = engine.recognize(&rgb)?;
+        match mode {
+            DocMode::Ocr => Ok(r.to_json()),
+            DocMode::Estimate => {
+                let rows = crate::estimate::page_rows(Some(&engine), Some(&rgb), &r, 1);
+                let doc = crate::estimate::parse_rows(rows, 1);
+                serde_json::to_value(&doc)
+                    .map_err(|e| anyhow::anyhow!("сериализация сметы: {}", e))
+            }
+            DocMode::EstimatePazl => {
+                let rows = crate::estimate::page_rows(Some(&engine), Some(&rgb), &r, 1);
+                let doc = crate::estimate::parse_rows(rows, 1);
+                let (dto, parser, llm_err) = crate::estimate::pazl::parse_pazl(&doc);
+                let mut v = serde_json::to_value(&dto)
+                    .map_err(|e| anyhow::anyhow!("сериализация DTO: {}", e))?;
+                v["parser"] = serde_json::json!(parser);
+                if let Some(e) = llm_err {
+                    v["llm_error"] = serde_json::json!(e);
+                }
+                Ok(v)
+            }
+        }
     })
     .await;
     drop(permit);
     match res {
-        Ok(Ok(r)) => Json(r.to_json()).into_response(),
+        Ok(Ok(v)) => Json(v).into_response(),
         Ok(Err(e)) => err(StatusCode::UNPROCESSABLE_ENTITY, format!("{}", e)),
         Err(e) => err(StatusCode::INTERNAL_SERVER_ERROR, format!("worker: {}", e)),
     }

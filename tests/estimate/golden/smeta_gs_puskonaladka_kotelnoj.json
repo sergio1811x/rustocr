@@ -1,0 +1,28 @@
+{
+ "pages": 2,
+ "sections": 1,
+ "positions": 4,
+ "resources": 0,
+ "table_rows": 35,
+ "unclassified_rows": 42,
+ "qty_price_checked": 2,
+ "section_totals_checked": 1,
+ "total": 2940.0,
+ "vat": null,
+ "total_with_vat": null,
+ "errors": [
+  "section_total_mismatch"
+ ],
+ "warnings": [
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "unclassified_rows"
+ ],
+ "sections_detail": [
+  {
+   "title": "Режимно-наладочные испытания",
+   "positions": 4,
+   "total": 2940.0
+  }
+ ]
+}

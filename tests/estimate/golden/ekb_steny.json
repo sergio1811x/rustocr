@@ -1,0 +1,26 @@
+{
+ "pages": 1,
+ "sections": 1,
+ "positions": 27,
+ "resources": 0,
+ "table_rows": 29,
+ "unclassified_rows": 2,
+ "qty_price_checked": 0,
+ "section_totals_checked": 1,
+ "total": 1371392.0,
+ "vat": null,
+ "total_with_vat": null,
+ "errors": [
+  "section_total_mismatch"
+ ],
+ "warnings": [
+  "unclassified_rows"
+ ],
+ "sections_detail": [
+  {
+   "title": "Стень , дом ла и бани",
+   "positions": 27,
+   "total": 1371392.0
+  }
+ ]
+}

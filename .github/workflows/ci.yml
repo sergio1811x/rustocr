@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    # nightly 06:00 МСК (03:00 UTC): полный корпус смет
+    - cron: "0 3 * * *"
+
+env:
+  ORT_DYLIB_PATH: ${{ github.workspace }}/runtime/libonnxruntime.so.1.20.0
+  RUSTOCR_MODELS: ${{ github.workspace }}/models
+
+jobs:
+  unit:
+    name: cargo test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Юнит-тесты
+        run: cargo test --release
+
+  corpus:
+    name: Регрессия сметного конвейера
+    # на каждый пуш не гоняем (OCR десятков PDF дорог): ночь / кнопка /
+    # коммит с маркером [corpus]
+    if: >-
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && contains(github.event.head_commit.message, '[corpus]'))
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Зависимости (poppler: pdftoppm/pdftotext)
+        run: sudo apt-get update && sudo apt-get install -y poppler-utils
+      - name: Сборка
+        run: cargo build --release
+      - name: Сметный конвейер vs golden (гейт)
+        run: python3 bench/test_estimate.py
+      - name: Числовая точность OCR (гейт ≥ 98.5%)
+        run: |
+          cp target/release/rustocr bin/rustocr
+          python3 bench/test_real.py
+          python3 bench/compare_nums.py | tee /tmp/nums.txt
+          cov=$(awk '/ИТОГО/{for(i=1;i<=NF;i++) if($i ~ /%$/) {gsub("[%]","",$i); print $i; exit}}' /tmp/nums.txt)
+          echo "точность чисел: ${cov}%"
+          awk -v c="$cov" 'BEGIN{exit (c+0 < 98.5)}' || {
+            echo "::error::Точность чисел ${cov}% ниже порога 98.5%"; exit 1; }
+      - name: Артефакт: сводка точности
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: accuracy-${{ github.run_id }}
+          path: /tmp/rustocr_bench/out/
+          retention-days: 14

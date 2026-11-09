@@ -1,0 +1,66 @@
+{
+ "pages": 11,
+ "sections": 3,
+ "positions": 106,
+ "resources": 8,
+ "table_rows": 323,
+ "unclassified_rows": 299,
+ "qty_price_checked": 10,
+ "section_totals_checked": 3,
+ "total": 205654.881602094,
+ "vat": null,
+ "total_with_vat": 20331225.0,
+ "errors": [
+  "doc_total_mismatch",
+  "section_total_mismatch",
+  "section_total_mismatch",
+  "section_total_mismatch"
+ ],
+ "warnings": [
+  "position_duplicate",
+  "position_missing",
+  "position_no_name",
+  "position_no_name",
+  "position_no_name",
+  "position_no_name",
+  "position_no_name",
+  "position_no_name",
+  "position_no_name",
+  "position_no_numbers",
+  "position_no_numbers",
+  "position_no_numbers",
+  "position_no_numbers",
+  "position_no_numbers",
+  "position_no_numbers",
+  "position_no_numbers",
+  "position_no_numbers",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "unclassified_rows"
+ ],
+ "sections_detail": [
+  {
+   "title": "(без разделов)",
+   "positions": 40,
+   "total": 280.83264826686
+  },
+  {
+   "title": "Постамент 7543,99 84 341",
+   "positions": 61,
+   "total": 3605.0
+  },
+  {
+   "title": "в том числе",
+   "positions": 5,
+   "total": 777.4520089
+  }
+ ]
+}

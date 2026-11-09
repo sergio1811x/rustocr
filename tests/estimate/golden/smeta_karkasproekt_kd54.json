@@ -1,0 +1,45 @@
+{
+ "pages": 1,
+ "sections": 1,
+ "positions": 23,
+ "resources": 1,
+ "table_rows": 36,
+ "unclassified_rows": 19,
+ "qty_price_checked": 0,
+ "section_totals_checked": 1,
+ "total": 894742.0,
+ "vat": null,
+ "total_with_vat": null,
+ "errors": [
+  "section_total_mismatch"
+ ],
+ "warnings": [
+  "position_no_numbers",
+  "position_no_numbers",
+  "position_no_numbers",
+  "position_no_numbers",
+  "position_no_numbers",
+  "position_no_numbers",
+  "position_no_numbers",
+  "position_no_numbers",
+  "position_no_numbers",
+  "position_no_numbers",
+  "position_no_numbers",
+  "position_no_numbers",
+  "position_no_numbers",
+  "position_no_numbers",
+  "position_no_numbers",
+  "position_no_numbers",
+  "position_no_numbers",
+  "position_no_numbers",
+  "position_no_numbers",
+  "unclassified_rows"
+ ],
+ "sections_detail": [
+  {
+   "title": "Стоимость Итого,",
+   "positions": 23,
+   "total": 894742.0
+  }
+ ]
+}
