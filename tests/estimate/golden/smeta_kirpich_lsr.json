@@ -1,11 +1,11 @@
 {
  "pages": 7,
  "sections": 1,
- "positions": 52,
+ "positions": 38,
  "resources": 3,
  "table_rows": 125,
- "unclassified_rows": 24,
- "qty_price_checked": 37,
+ "unclassified_rows": 28,
+ "qty_price_checked": 36,
  "section_totals_checked": 0,
  "total": 22719595.0,
  "vat": 3465701.0,
@@ -18,10 +18,6 @@
   "auto_repair",
   "auto_repair",
   "auto_repair",
-  "auto_repair",
-  "auto_repair",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
   "qty_price_mismatch",
   "qty_price_mismatch",
   "qty_price_mismatch",
@@ -34,8 +30,8 @@
  ],
  "sections_detail": [
   {
-   "title": "(без разделов)",
-   "positions": 52,
+   "title": "(без названия)",
+   "positions": 38,
    "total": null
   }
  ]

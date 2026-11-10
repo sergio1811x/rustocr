@@ -1,10 +1,10 @@
 {
  "pages": 8,
- "sections": 1,
- "positions": 83,
- "resources": 1,
+ "sections": 6,
+ "positions": 74,
+ "resources": 0,
  "table_rows": 148,
- "unclassified_rows": 24,
+ "unclassified_rows": 19,
  "qty_price_checked": 4,
  "section_totals_checked": 0,
  "total": 2396850.17,
@@ -17,12 +17,42 @@
   "qty_price_mismatch",
   "qty_price_mismatch",
   "section_total_missing",
+  "section_total_missing",
+  "section_total_missing",
+  "section_total_missing",
+  "section_total_missing",
+  "section_total_missing",
   "unclassified_rows"
  ],
  "sections_detail": [
   {
-   "title": "(без разделов)",
-   "positions": 83,
+   "title": "Землянные работы",
+   "positions": 2,
+   "total": null
+  },
+  {
+   "title": "Укладка труб дрены и коллектора",
+   "positions": 15,
+   "total": null
+  },
+  {
+   "title": "Устройство смотровых и дренажных к коло одцев",
+   "positions": 25,
+   "total": null
+  },
+  {
+   "title": "Наклонный дренаж",
+   "positions": 5,
+   "total": null
+  },
+  {
+   "title": "Установка грунтового репера Rр 1",
+   "positions": 12,
+   "total": null
+  },
+  {
+   "title": "Устройство наблюдательных скважі ин Ск в №3, Скв№ 4",
+   "positions": 15,
    "total": null
   }
  ]

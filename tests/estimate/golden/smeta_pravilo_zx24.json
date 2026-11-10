@@ -1,19 +1,17 @@
 {
  "pages": 5,
- "sections": 8,
- "positions": 186,
+ "sections": 10,
+ "positions": 179,
  "resources": 17,
  "table_rows": 257,
- "unclassified_rows": 21,
+ "unclassified_rows": 22,
  "qty_price_checked": 170,
- "section_totals_checked": 8,
+ "section_totals_checked": 9,
  "total": 5358904.13,
  "vat": null,
  "total_with_vat": null,
  "errors": [
   "doc_total_mismatch",
-  "section_total_mismatch",
-  "section_total_mismatch",
   "section_total_mismatch",
   "section_total_mismatch"
  ],
@@ -29,8 +27,8 @@
  ],
  "sections_detail": [
   {
-   "title": "Электролитный",
-   "positions": 5,
+   "title": "ПОЧЕМУ«ПРАВИЛО»?",
+   "positions": 3,
    "total": 90300.0
   },
   {
@@ -40,7 +38,7 @@
   },
   {
    "title": "УСТРОЙСТВО ФУНДАМЕНТА (SРЗD3)",
-   "positions": 67,
+   "positions": 66,
    "total": 1617553.1
   },
   {
@@ -55,8 +53,18 @@
   },
   {
    "title": "МОНТАЖ СТРОПИЛЬНОЙ СИСТЕМЫ (SRZD11)",
-   "positions": 31,
-   "total": 442431.36
+   "positions": 11,
+   "total": 548449.36
+  },
+  {
+   "title": "Торговая марка ПРАВИЛО принадлежит ООО \"ВФ СТРОЙ\"",
+   "positions": 0,
+   "total": 3.0
+  },
+  {
+   "title": "МОНТАЖ КРОВЕЛЬНОГО ПОКРЫТИЯ (SRZD13)",
+   "positions": 18,
+   "total": 723018.63
   },
   {
    "title": "ОТДЕЛКА ВНЕШНИХ СТЕН и ЦОКОЛЯ (SRЗD15)",
@@ -65,7 +73,7 @@
   },
   {
    "title": "МОНТАЖ ВОДОСТОЧНОЙ СИСТЕМЫ, ПОДШИВКА СВЕСОВ (СРЗД16)",
-   "positions": 12,
+   "positions": 10,
    "total": 234386.17
   }
  ]

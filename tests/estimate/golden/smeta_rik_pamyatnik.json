@@ -1,11 +1,11 @@
 {
  "pages": 11,
  "sections": 2,
- "positions": 121,
+ "positions": 118,
  "resources": 2,
  "table_rows": 323,
- "unclassified_rows": 173,
- "qty_price_checked": 38,
+ "unclassified_rows": 177,
+ "qty_price_checked": 36,
  "section_totals_checked": 2,
  "total": null,
  "vat": null,
@@ -16,7 +16,6 @@
  ],
  "warnings": [
   "doc_total_missing",
-  "position_duplicate",
   "position_missing",
   "position_no_name",
   "position_no_name",
@@ -26,7 +25,6 @@
   "position_no_name",
   "position_no_name",
   "position_no_numbers",
-  "qty_price_mismatch",
   "qty_price_mismatch",
   "qty_price_mismatch",
   "qty_price_mismatch",
@@ -64,7 +62,7 @@
   },
   {
    "title": "Постамент 7543,99 84 341",
-   "positions": 77,
+   "positions": 74,
    "total": 20089.0
   }
  ]

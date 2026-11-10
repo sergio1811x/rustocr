@@ -1,13 +1,13 @@
 {
  "pages": 13,
- "sections": 11,
- "positions": 146,
- "resources": 3,
+ "sections": 10,
+ "positions": 125,
+ "resources": 2,
  "table_rows": 241,
- "unclassified_rows": 65,
+ "unclassified_rows": 57,
  "qty_price_checked": 32,
  "section_totals_checked": 9,
- "total": 3074.95,
+ "total": 401877.0,
  "vat": null,
  "total_with_vat": null,
  "errors": [
@@ -23,7 +23,6 @@
   "section_total_mismatch"
  ],
  "warnings": [
-  "auto_repair",
   "qty_price_mismatch",
   "qty_price_mismatch",
   "qty_price_mismatch",
@@ -46,33 +45,33 @@
  "sections_detail": [
   {
    "title": "(без разделов)",
-   "positions": 3,
+   "positions": 2,
    "total": null
   },
   {
    "title": "ФУНДАМЕНТЫ",
-   "positions": 13,
-   "total": 294.66
+   "positions": 11,
+   "total": 58437.0
   },
   {
    "title": "СТЕНЫ",
-   "positions": 21,
-   "total": 771.47
+   "positions": 19,
+   "total": 86120.0
   },
   {
    "title": "Перегородки",
-   "positions": 4,
-   "total": 308.62
+   "positions": 2,
+   "total": 16512.0
   },
   {
    "title": "ПЕРЕКРЫТИЕ",
-   "positions": 20,
-   "total": 418.9
+   "positions": 18,
+   "total": 45597.0
   },
   {
    "title": "Покрытие.кровля",
-   "positions": 23,
-   "total": 994.44
+   "positions": 21,
+   "total": 105066.0
   },
   {
    "title": "ОКНА",
@@ -81,23 +80,18 @@
   },
   {
    "title": "БАЛКОННЫЕ ПЛАСТИКОВЫЕ",
-   "positions": 15,
-   "total": 63.84
+   "positions": 13,
+   "total": 11365.0
   },
   {
    "title": "Полы",
-   "positions": 12,
-   "total": 64.64
+   "positions": 10,
+   "total": 10564.0
   },
   {
    "title": "ВНУТРЕННЯЯ ОТД ЕЛКА",
-   "positions": 28,
+   "positions": 22,
    "total": 3092.94
-  },
-  {
-   "title": "Прайс-листах.",
-   "positions": 0,
-   "total": null
   }
  ]
 }

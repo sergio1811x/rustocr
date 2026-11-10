@@ -43,9 +43,21 @@ pub fn validate(doc: &mut EstimateDocument) {
     }
 
     // --- итог документа ---
+    // Σ с ресурсами разделов: НР/СП в выкладках ГС живут на уровне раздела,
+    // и итог сметы = Σ позиций + Σ НР/СП (+НДС) — без них проверка
+    // недосчитывает и падает в ложную ошибку
+    let section_sum_full = |s: &Section| -> f64 {
+        let mut v = section_sum(s);
+        for r in &s.resources {
+            if let Some(t) = &r.total {
+                v += t.value;
+            }
+        }
+        v
+    };
     let sum_sections: f64 = sections
         .iter()
-        .map(|s| section_sum(s))
+        .map(|s| section_sum_full(s))
         .filter(|v| *v > 0.0)
         .sum();
     let n_with_total = sections.iter().filter(|s| section_sum(s) > 0.0).count();
@@ -268,15 +280,26 @@ fn validate_section(sec: &Section, rep: &mut ValidationReport) {
             );
         }
     }
-    // итог раздела = Σ позиций
+    // итог раздела = Σ позиций + НР/СП-ресурсы уровня раздела (в выкладках
+    // ГС/Прайм «Накладные расходы %» и «Сметная прибыль %» живут на уровне
+    // раздела и входят в его итог — без них ложные расхождения)
     let sum_positions: f64 = sec
         .positions
         .iter()
         .chain(sec.subsections.iter().flat_map(|s| s.positions.iter()))
         .filter_map(position_sum)
         .sum();
+    let sec_resources: f64 = sec
+        .resources
+        .iter()
+        .filter_map(|r| r.total.as_ref().map(|t| t.value))
+        .sum();
     let sub_sums: f64 = sec.subsections.iter().map(section_sum).sum();
-    let computed = if sum_positions > 0.0 { sum_positions } else { sub_sums };
+    let computed = if sum_positions > 0.0 {
+        sum_positions + sec_resources
+    } else {
+        sub_sums + sec_resources
+    };
     if let Some(t) = &sec.total {
         if computed > 0.0 {
             let diff = (t.value - computed).abs();

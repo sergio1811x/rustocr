@@ -282,7 +282,22 @@ fn cli(
                     result: r,
                 })
                 .collect();
-            let doc = estimate::parse_estimate(Some(&engine), &pages);
+            let mut doc = estimate::parse_estimate(Some(&engine), &pages);
+            // П.2/П.3: арифметико-управляемый повтор — если арифметика не
+            // сошлась, перечитываем PDF в большем DPI, «подозрительные»
+            // страницы (бледные итоги, битые ячейки) — с выравниванием фона;
+            // из двух вариантов остаётся лучший по валидации
+            if let Some(doc2) = estimate_retry(
+                &engine,
+                &ort_env,
+                path,
+                cfg,
+                base_opts,
+                imgs,
+                &doc,
+            ) {
+                doc = doc2;
+            }
             eprintln!(
                 "-- Смета {}: разделов {}, позиций {}, ресурсов {}, ошибок валидации {}, предупреждений {} ({:?})",
                 path.display(),
@@ -312,6 +327,101 @@ fn cli(
         }
     }
     Ok(())
+}
+
+/// DPI повторного прохода сметы (env RUSTOCR_EST_RETRY_DPI, по умолчанию
+/// 300 при исходном <300; 0 — выключить). Перечитывание имеет смысл только
+/// для PDF (картинку перерендерить не из чего).
+fn est_retry_dpi(cfg: &CliCfg) -> u32 {
+    match std::env::var("RUSTOCR_EST_RETRY_DPI").ok().and_then(|v| v.parse::<u32>().ok()) {
+        Some(0) => 0,
+        Some(v) => v.clamp(72, 400),
+        None => {
+            if cfg.dpi < 300 {
+                300
+            } else {
+                0
+            }
+        }
+    }
+}
+
+/// Повторный проход сметного конвейера: тот же PDF, больший DPI и
+/// принудительное выравнивание фона для страниц с подозрительными итогами
+/// («Новый сруб»: итоги напечатаны бледно-серым по серой заливке — обычный
+/// детектор их не видит). Возвращает `Some(doc)`, только если вариант стал
+/// лучше по валидации (score ниже) — перечитывание не может ухудшить
+/// результат, только потратить время.
+fn estimate_retry(
+    engine: &Arc<OcrEngine>,
+    ort_env: &ort::environment::Environment,
+    path: &std::path::Path,
+    cfg: &CliCfg,
+    base_opts: &EngineOptions,
+    imgs: &std::sync::Arc<Vec<image::RgbImage>>,
+    first: &estimate::EstimateDocument,
+) -> Option<estimate::EstimateDocument> {
+    let dpi2 = est_retry_dpi(cfg);
+    if dpi2 == 0 || dpi2 <= cfg.dpi {
+        return None;
+    }
+    if !pdf::is_pdf_path(path) {
+        return None; // картинку перерендерить не из чего
+    }
+    let score1 = estimate::validation_score(first);
+    if score1 == 0 {
+        return None; // арифметика сошлась — перечитывать незачем
+    }
+    let suspects = estimate::suspect_pages(first);
+    eprintln!(
+        "-- Смета: арифметика не сошлась (оценка {}), перечитываю PDF в {} DPI{}",
+        score1,
+        dpi2,
+        if suspects.is_empty() {
+            String::new()
+        } else {
+            format!(", выравниваю фон страниц {:?}", suspects)
+        }
+    );
+    let t0 = std::time::Instant::now();
+    let mut images2 = pdf::render_pdf(path, dpi2).ok()?;
+    if images2.len() != imgs.len() {
+        return None; // рендер дал другое число страниц — не рискуем
+    }
+    for &p in &suspects {
+        if p >= 1 && p <= images2.len() {
+            crate::det::flatten_background(&mut images2[p - 1]);
+        }
+    }
+    let images2 = std::sync::Arc::new(images2);
+    let results2 = run_pages(
+        engine.clone(),
+        ort_env,
+        images2.clone(),
+        cfg.jobs,
+        base_opts,
+    )
+    .ok()?;
+    let pages2: Vec<estimate::PageInput> = results2
+        .iter()
+        .enumerate()
+        .map(|(n, r)| estimate::PageInput {
+            page: n + 1,
+            img: images2.get(n),
+            result: r,
+        })
+        .collect();
+    let second = estimate::parse_estimate(Some(engine), &pages2);
+    let score2 = estimate::validation_score(&second);
+    eprintln!(
+        "-- Смета (повтор, {} DPI): {:.1} с, оценка арифметики {} → {} — {}",
+        dpi2,
+        t0.elapsed().as_secs_f64(),
+        score1,
+        score2,
+        if score2 < score1 { "принят повторный вариант" } else { "оставлен первый вариант" }
+    );
+    (score2 < score1).then_some(second)
 }
 
 /// Записать JSON в файл или вывести в stdout.

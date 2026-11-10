@@ -1,20 +1,20 @@
 {
  "pages": 3,
- "sections": 8,
- "positions": 152,
+ "sections": 9,
+ "positions": 147,
  "resources": 0,
  "table_rows": 167,
- "unclassified_rows": 6,
+ "unclassified_rows": 11,
  "qty_price_checked": 0,
- "section_totals_checked": 6,
+ "section_totals_checked": 7,
  "total": 10975506.0,
  "vat": null,
  "total_with_vat": null,
  "errors": [
-  "doc_total_mismatch",
   "section_total_mismatch"
  ],
  "warnings": [
+  "doc_total_excludes_sections",
   "section_total_missing",
   "unclassified_rows"
  ],
@@ -51,7 +51,12 @@
   },
   {
    "title": "Монтаж кровли",
-   "positions": 26,
+   "positions": 19,
+   "total": 1672601.0
+  },
+  {
+   "title": "Транспортные и накладные расходы, разгрузка, крепеж",
+   "positions": 2,
    "total": 825826.0
   },
   {

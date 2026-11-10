@@ -1,19 +1,17 @@
 {
  "pages": 29,
- "sections": 14,
- "positions": 381,
- "resources": 20,
+ "sections": 10,
+ "positions": 337,
+ "resources": 7,
  "table_rows": 825,
- "unclassified_rows": 93,
+ "unclassified_rows": 85,
  "qty_price_checked": 238,
- "section_totals_checked": 14,
+ "section_totals_checked": 10,
  "total": 3653728.0,
  "vat": null,
  "total_with_vat": null,
  "errors": [
-  "section_total_mismatch",
-  "section_total_mismatch",
-  "section_total_mismatch",
+  "doc_total_mismatch",
   "section_total_mismatch",
   "section_total_mismatch",
   "section_total_mismatch",
@@ -26,85 +24,58 @@
   "section_total_mismatch"
  ],
  "warnings": [
-  "doc_total_excludes_sections",
-  "position_duplicate",
-  "position_no_name",
-  "position_no_name",
-  "position_no_name",
-  "position_no_name",
-  "position_no_name",
   "unclassified_rows"
  ],
  "sections_detail": [
   {
-   "title": "Сме тный Калькулятор",
-   "positions": 94,
-   "total": 862239.0
-  },
-  {
-   "title": "Сме тный Калькулятор",
-   "positions": 21,
+   "title": "(без разделов)",
+   "positions": 107,
    "total": 90183.0
   },
   {
    "title": "По лы",
-   "positions": 39,
-   "total": 556807.0
-  },
-  {
-   "title": "Сме тный Калькулятор",
-   "positions": 21,
+   "positions": 53,
    "total": 870351.0
   },
   {
    "title": "Ок онн ые заполнения",
-   "positions": 18,
+   "positions": 15,
    "total": 93057.0
   },
   {
    "title": "Дв ерн ые проемы",
-   "positions": 15,
+   "positions": 12,
    "total": 92595.0
   },
   {
    "title": "От дел очные работы",
-   "positions": 53,
-   "total": 738589.0
-  },
-  {
-   "title": "Сме тный Калькулятор",
-   "positions": 21,
+   "positions": 67,
    "total": 63813.0
   },
   {
    "title": "По лы из досок",
-   "positions": 42,
+   "positions": 39,
    "total": 83948.0
   },
   {
    "title": "$У_c трoі йство перегородок",
-   "positions": 10,
+   "positions": 7,
    "total": 55179.0
   },
   {
    "title": "Me тал лические конструкции",
-   "positions": 10,
+   "positions": 7,
    "total": 61191.0
   },
   {
-   "title": "Сме тный Калькулятор",
+   "title": "Резерв средств на непредвиденные % 1.5 918",
    "positions": 1,
    "total": 73289.0
   },
   {
    "title": "$y_c$ троі йстВО оСНОВАНИй",
-   "positions": 12,
-   "total": 4445.0
-  },
-  {
-   "title": "Сме тный Калькулятор",
-   "positions": 24,
-   "total": 3653728.0
+   "positions": 29,
+   "total": 69233.0
   }
  ]
 }

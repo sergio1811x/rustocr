@@ -1,21 +1,25 @@
 {
  "pages": 7,
- "sections": 2,
- "positions": 302,
+ "sections": 7,
+ "positions": 294,
  "resources": 8,
  "table_rows": 406,
- "unclassified_rows": 58,
+ "unclassified_rows": 63,
  "qty_price_checked": 19,
- "section_totals_checked": 1,
+ "section_totals_checked": 5,
  "total": 8354724.64,
  "vat": null,
  "total_with_vat": null,
  "errors": [
   "doc_total_mismatch",
+  "section_total_mismatch",
+  "section_total_mismatch",
+  "section_total_mismatch",
+  "section_total_mismatch",
   "section_total_mismatch"
  ],
  "warnings": [
-  "position_duplicate",
+  "auto_repair",
   "qty_price_mismatch",
   "qty_price_mismatch",
   "qty_price_mismatch",
@@ -35,12 +39,37 @@
  "sections_detail": [
   {
    "title": "(без разделов)",
-   "positions": 6,
+   "positions": 5,
    "total": null
   },
   {
-   "title": "Разработка котлована экскаватором (грунт складируется на",
-   "positions": 296,
+   "title": "Монолитный каркас дома",
+   "positions": 93,
+   "total": 3382854.8
+  },
+  {
+   "title": "Заполнение каркаса",
+   "positions": 34,
+   "total": 2215429.15
+  },
+  {
+   "title": "Устройство кровли",
+   "positions": 58,
+   "total": 577462.89
+  },
+  {
+   "title": "Устройство гидроизоляции балконов и террас",
+   "positions": 38,
+   "total": 365118.49
+  },
+  {
+   "title": "Фасад",
+   "positions": 41,
+   "total": 604121.92
+  },
+  {
+   "title": "Расходные материалы",
+   "positions": 25,
    "total": 8140862.87
   }
  ]

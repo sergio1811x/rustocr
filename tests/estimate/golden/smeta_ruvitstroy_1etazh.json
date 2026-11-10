@@ -1,16 +1,17 @@
 {
  "pages": 5,
  "sections": 6,
- "positions": 140,
+ "positions": 137,
  "resources": 4,
  "table_rows": 181,
  "unclassified_rows": 28,
- "qty_price_checked": 129,
- "section_totals_checked": 5,
+ "qty_price_checked": 127,
+ "section_totals_checked": 6,
  "total": null,
  "vat": null,
  "total_with_vat": null,
  "errors": [
+  "section_total_mismatch",
   "section_total_mismatch",
   "section_total_mismatch",
   "section_total_mismatch",
@@ -23,7 +24,9 @@
   "auto_repair",
   "auto_repair",
   "auto_repair",
+  "auto_repair",
   "doc_total_missing",
+  "qty_price_mismatch",
   "qty_price_mismatch",
   "qty_price_mismatch",
   "qty_price_mismatch",
@@ -48,18 +51,18 @@
   },
   {
    "title": "Монтажные работы",
-   "positions": 33,
+   "positions": 15,
+   "total": 4013.0
+  },
+  {
+   "title": "Устройство стяжки пола",
+   "positions": 17,
    "total": 6865.0
   },
   {
    "title": "Кровля",
-   "positions": 33,
+   "positions": 31,
    "total": 63655.0
-  },
-  {
-   "title": "Неточности и дополнения в смете",
-   "positions": 0,
-   "total": null
   }
  ]
 }

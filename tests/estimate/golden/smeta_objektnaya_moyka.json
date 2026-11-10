@@ -4,7 +4,7 @@
  "positions": 10,
  "resources": 0,
  "table_rows": 20,
- "unclassified_rows": 5,
+ "unclassified_rows": 4,
  "qty_price_checked": 6,
  "section_totals_checked": 2,
  "total": null,
@@ -26,14 +26,14 @@
  ],
  "sections_detail": [
   {
-   "title": "Гранд-СМЕТ А",
+   "title": "Расчетный измеритель единичной стоимо сти",
    "positions": 7,
    "total": 32069.48
   },
   {
    "title": "B ре менные зда ания и сооружения",
    "positions": 3,
-   "total": 74.07
+   "total": 40246.65
   }
  ]
 }

@@ -1,13 +1,13 @@
 {
  "pages": 6,
- "sections": 2,
- "positions": 42,
- "resources": 13,
+ "sections": 6,
+ "positions": 28,
+ "resources": 2,
  "table_rows": 91,
- "unclassified_rows": 16,
- "qty_price_checked": 7,
+ "unclassified_rows": 20,
+ "qty_price_checked": 1,
  "section_totals_checked": 0,
- "total": 126115.59,
+ "total": 39126.0,
  "vat": 5968.0,
  "total_with_vat": null,
  "errors": [
@@ -15,25 +15,43 @@
  ],
  "warnings": [
   "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
   "section_total_missing",
-  "unclassified_rows",
-  "vat_mismatch"
+  "section_total_missing",
+  "section_total_missing",
+  "section_total_missing",
+  "section_total_missing",
+  "section_total_missing",
+  "unclassified_rows"
  ],
  "sections_detail": [
   {
    "title": "Гра анд-CMETA",
-   "positions": 42,
+   "positions": 4,
    "total": null
   },
   {
-   "title": "Гра анд-CMETA",
-   "positions": 0,
+   "title": "Канали изация - трубы чугунн ые",
+   "positions": 4,
+   "total": null
+  },
+  {
+   "title": "Канали изация - трубы пласті иковые",
+   "positions": 3,
+   "total": null
+  },
+  {
+   "title": "Водоп ровод - трубы металл 10пластин ковые е",
+   "positions": 10,
+   "total": null
+  },
+  {
+   "title": "Земля ные работы",
+   "positions": 3,
+   "total": null
+  },
+  {
+   "title": "Вывоз грунта, мусора",
+   "positions": 4,
    "total": null
   }
  ]

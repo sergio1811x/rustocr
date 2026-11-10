@@ -21,7 +21,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 REAL = REPO / "tests/data/real"
 GOLDEN = REPO / "tests/estimate/golden"
-BIN = REPO / "target/release/rustocr"
+BIN = Path(os.environ.get("RUSTOCR_BIN", REPO / "target/release/rustocr"))
 OUT = Path(os.environ.get("ESTIMATE_OUT", "/tmp/rustocr_estimate"))
 UPDATE = "--update" in sys.argv
 ONLY = next((a for a in sys.argv[1:] if not a.startswith("-")), "")
@@ -34,6 +34,9 @@ def run_doc(pdf: Path) -> dict:
     env = dict(os.environ)
     env["ORT_DYLIB_PATH"] = str(REPO / "runtime/libonnxruntime.so.1.20.0")
     env["RUSTOCR_MODELS"] = str(REPO / "models")
+    # регрессия меряет ОДНОпроходный конвейер: retry-перечитывание в большем
+    # DPI — отдельный режим качества (проверяется вручную на newizba/stroyedm)
+    env.setdefault("RUSTOCR_EST_RETRY_DPI", "0")
     res = subprocess.run(
         [str(BIN), str(pdf), "--estimate", str(out_json)],
         env=env, capture_output=True, text=True, timeout=1200,

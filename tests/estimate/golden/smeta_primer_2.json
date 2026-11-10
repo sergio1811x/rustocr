@@ -1,23 +1,26 @@
 {
  "pages": 12,
- "sections": 1,
- "positions": 134,
- "resources": 19,
+ "sections": 6,
+ "positions": 114,
+ "resources": 12,
  "table_rows": 221,
- "unclassified_rows": 14,
+ "unclassified_rows": 16,
  "qty_price_checked": 63,
- "section_totals_checked": 1,
- "total": 87.0,
+ "section_totals_checked": 6,
+ "total": 9569707.87,
  "vat": null,
  "total_with_vat": null,
  "errors": [
   "doc_total_mismatch",
+  "section_total_mismatch",
+  "section_total_mismatch",
+  "section_total_mismatch",
+  "section_total_mismatch",
+  "section_total_mismatch",
   "section_total_mismatch"
  ],
  "warnings": [
   "position_duplicate",
-  "position_missing",
-  "position_no_name",
   "qty_price_mismatch",
   "qty_price_mismatch",
   "qty_price_mismatch",
@@ -26,9 +29,34 @@
  ],
  "sections_detail": [
   {
-   "title": "Сме тный Калькулятор",
-   "positions": 134,
-   "total": 92.0
+   "title": "Земляные работы",
+   "positions": 21,
+   "total": 148958.07
+  },
+  {
+   "title": "Трубопровод талой воды К1",
+   "positions": 21,
+   "total": 6569322.0
+  },
+  {
+   "title": "л 3 Трубопровод опорожнения К3",
+   "positions": 16,
+   "total": 4166.36
+  },
+  {
+   "title": "л 4 Хозяйственно-питьевой водопровод В1",
+   "positions": 23,
+   "total": 409842.29
+  },
+  {
+   "title": "л 5 Канализация К2, К12",
+   "positions": 17,
+   "total": 412770.03
+  },
+  {
+   "title": "л 6 Прочие работы",
+   "positions": 16,
+   "total": 564863.12
   }
  ]
 }

@@ -1,11 +1,11 @@
 {
  "pages": 5,
  "sections": 3,
- "positions": 71,
- "resources": 5,
+ "positions": 68,
+ "resources": 4,
  "table_rows": 109,
- "unclassified_rows": 23,
- "qty_price_checked": 18,
+ "unclassified_rows": 22,
+ "qty_price_checked": 16,
  "section_totals_checked": 1,
  "total": 123867.12,
  "vat": 7445.66,
@@ -15,6 +15,7 @@
   "section_total_mismatch"
  ],
  "warnings": [
+  "auto_repair",
   "position_duplicate",
   "position_missing",
   "position_no_name",
@@ -27,24 +28,25 @@
   "qty_price_mismatch",
   "qty_price_mismatch",
   "section_total_missing",
+  "section_total_missing",
   "unclassified_rows",
   "vat_mismatch"
  ],
  "sections_detail": [
   {
-   "title": "Гранд-СМЕТA а",
+   "title": "(без разделов)",
    "positions": 1,
    "total": null
   },
   {
-   "title": "Ограждение длиной 244 м.п. 97 пролетов 4 5 6 7 8 9 10 11",
-   "positions": 70,
-   "total": 873.77
+   "title": "Ограждение длиной 244 м.п 97 пролетов 4 5 6 7 8 9 10 11",
+   "positions": 57,
+   "total": null
   },
   {
-   "title": "А.Г. Окладн никова",
-   "positions": 0,
-   "total": null
+   "title": "Погрузка и перевозка мусора",
+   "positions": 10,
+   "total": 43318.24
   }
  ]
 }

@@ -1,25 +1,20 @@
 {
  "pages": 5,
- "sections": 1,
- "positions": 68,
+ "sections": 7,
+ "positions": 41,
  "resources": 0,
  "table_rows": 96,
- "unclassified_rows": 20,
- "qty_price_checked": 41,
+ "unclassified_rows": 38,
+ "qty_price_checked": 37,
  "section_totals_checked": 0,
- "total": 3327657391.62,
- "vat": 66.0,
+ "total": 1544414.6,
+ "vat": 235588.66,
  "total_with_vat": null,
  "errors": [
   "doc_total_mismatch"
  ],
  "warnings": [
   "auto_repair",
-  "position_duplicate",
-  "position_no_name",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
   "qty_price_mismatch",
   "qty_price_mismatch",
   "qty_price_mismatch",
@@ -32,13 +27,48 @@
   "qty_price_mismatch",
   "qty_price_mismatch",
   "section_total_missing",
-  "unclassified_rows",
-  "vat_mismatch"
+  "section_total_missing",
+  "section_total_missing",
+  "section_total_missing",
+  "section_total_missing",
+  "section_total_missing",
+  "section_total_missing",
+  "unclassified_rows"
  ],
  "sections_detail": [
   {
-   "title": "Гра нд-CMET A",
-   "positions": 68,
+   "title": "(без разделов)",
+   "positions": 3,
+   "total": null
+  },
+  {
+   "title": "Землян ные работы",
+   "positions": 4,
+   "total": null
+  },
+  {
+   "title": "Фундам мент",
+   "positions": 13,
+   "total": null
+  },
+  {
+   "title": "Перекр ытие",
+   "positions": 8,
+   "total": null
+  },
+  {
+   "title": "Стены",
+   "positions": 2,
+   "total": null
+  },
+  {
+   "title": "Проемь ы",
+   "positions": 6,
+   "total": null
+  },
+  {
+   "title": "Кровля 1",
+   "positions": 5,
    "total": null
   }
  ]

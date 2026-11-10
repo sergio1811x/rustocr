@@ -1,10 +1,10 @@
 {
  "pages": 7,
  "sections": 5,
- "positions": 51,
- "resources": 10,
+ "positions": 40,
+ "resources": 7,
  "table_rows": 148,
- "unclassified_rows": 65,
+ "unclassified_rows": 76,
  "qty_price_checked": 23,
  "section_totals_checked": 5,
  "total": 2010424.59,
@@ -44,8 +44,8 @@
   },
   {
    "title": "ремонт ограждения парапета набережно й",
-   "positions": 16,
-   "total": 1670342.8
+   "positions": 5,
+   "total": 176857.95
   }
  ]
 }

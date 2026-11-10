@@ -1,16 +1,18 @@
 {
  "pages": 6,
  "sections": 14,
- "positions": 201,
+ "positions": 196,
  "resources": 5,
  "table_rows": 270,
- "unclassified_rows": 9,
- "qty_price_checked": 180,
- "section_totals_checked": 12,
+ "unclassified_rows": 10,
+ "qty_price_checked": 179,
+ "section_totals_checked": 14,
  "total": null,
  "vat": null,
  "total_with_vat": null,
  "errors": [
+  "section_total_mismatch",
+  "section_total_mismatch",
   "section_total_mismatch",
   "section_total_mismatch",
   "section_total_mismatch",
@@ -203,15 +205,9 @@
   "qty_price_mismatch",
   "qty_price_mismatch",
   "qty_price_mismatch",
-  "qty_price_mismatch",
   "unclassified_rows"
  ],
  "sections_detail": [
-  {
-   "title": "(без разделов)",
-   "positions": 1,
-   "total": null
-  },
   {
    "title": "Подготовительные работы",
    "positions": 5,
@@ -249,12 +245,22 @@
   },
   {
    "title": "Стропильная система кровли",
-   "positions": 48,
+   "positions": 34,
+   "total": 16052.0
+  },
+  {
+   "title": "Фасад",
+   "positions": 12,
    "total": 718451.0
   },
   {
    "title": "Окна, двери",
-   "positions": 15,
+   "positions": 9,
+   "total": 231949.0
+  },
+  {
+   "title": "Межкомнатные перегородки",
+   "positions": 4,
    "total": 110013.0
   },
   {
@@ -270,12 +276,7 @@
   {
    "title": "Система водостока",
    "positions": 10,
-   "total": 2.0
-  },
-  {
-   "title": "Грах кданским кодексом.",
-   "positions": 0,
-   "total": null
+   "total": 805102.0
   }
  ]
 }

@@ -1,28 +1,50 @@
 {
  "pages": 4,
- "sections": 1,
- "positions": 26,
- "resources": 2,
+ "sections": 5,
+ "positions": 16,
+ "resources": 0,
  "table_rows": 61,
- "unclassified_rows": 15,
+ "unclassified_rows": 21,
  "qty_price_checked": 1,
- "section_totals_checked": 1,
- "total": 860.96,
+ "section_totals_checked": 0,
+ "total": 495942.25,
  "vat": 75652.21,
  "total_with_vat": null,
  "errors": [
-  "section_total_mismatch"
+  "doc_total_mismatch"
  ],
  "warnings": [
   "qty_price_mismatch",
-  "unclassified_rows",
-  "vat_mismatch"
+  "section_total_missing",
+  "section_total_missing",
+  "section_total_missing",
+  "unclassified_rows"
  ],
  "sections_detail": [
   {
-   "title": "(без разделов)",
-   "positions": 26,
-   "total": 860.96
+   "title": "Ворота (демон нтаж)",
+   "positions": 1,
+   "total": null
+  },
+  {
+   "title": "Ворота (изгот овление и мон нтаж)",
+   "positions": 9,
+   "total": null
+  },
+  {
+   "title": "Изоляция вор отин изделияі ми из пен нопла ста",
+   "positions": 3,
+   "total": null
+  },
+  {
+   "title": "Устройство рс остверка",
+   "positions": 1,
+   "total": null
+  },
+  {
+   "title": "Усиление кол онн",
+   "positions": 2,
+   "total": null
   }
  ]
 }

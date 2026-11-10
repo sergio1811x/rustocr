@@ -69,6 +69,80 @@ pub fn parse_rows(rows: Vec<semantics::DocRow>, pages: usize) -> EstimateDocumen
     doc
 }
 
+/// «Плохость» разобранной сметы по валидации: ошибки арифметики дороже
+/// предупреждений. Используется retry-проходом (перечтение в большем DPI):
+/// перечитываем документ только когда арифметика не сходится, и оставляем
+/// лучший из двух вариантов — перечитывание никогда не ухудшает результат.
+pub fn validation_score(doc: &EstimateDocument) -> u64 {
+    let mut s = 0u64;
+    for e in &doc.validation.errors {
+        s += match e.kind.as_str() {
+            "doc_total_mismatch" | "section_total_mismatch" | "total_with_vat_mismatch" => 10,
+            _ => 10,
+        };
+    }
+    for w in &doc.validation.warnings {
+        s += match w.kind.as_str() {
+            "qty_price_mismatch" => 2,
+            "section_total_missing" | "doc_total_missing" => 3,
+            "vat_mismatch" => 2,
+            "auto_repair" => 1,
+            _ => 0,
+        };
+    }
+    s
+}
+
+/// Страницы с «подозрительными» итогами: разделы без итога (бледная печать
+/// итогов «серым по серому» — детектор их не видит) и позиции, где
+/// кол-во × цена ≠ сумма. На retry-проходе этим страницам принудительно
+/// выравнивается фон (обычный текст уже распознался, а вот итоги «в тумане»).
+pub fn suspect_pages(doc: &EstimateDocument) -> Vec<usize> {
+    let mut v: Vec<usize> = Vec::new();
+    let mut push_pages = |pages: &Vec<usize>| {
+        for &p in pages {
+            if p >= 1 && !v.contains(&p) {
+                v.push(p);
+            }
+        }
+    };
+    for sec in &doc.sections {
+        if sec.total.is_none() && !(sec.positions.is_empty() && sec.subsections.is_empty()) {
+            push_pages(&sec.pages);
+        }
+        // итог есть, но арифметика с Σ позиций не сходится — ячейка итога
+        // или одной из позиций прочитана с заменой цифр
+        if let Some(t) = &sec.total {
+            let mut computed = 0.0f64;
+            for p in sec.all_positions() {
+                if let Some(pt) = &p.total {
+                    computed += pt.value;
+                } else if let (Some(q), Some(pr)) = (&p.quantity, &p.price) {
+                    computed += q.value * pr.value;
+                }
+            }
+            for r in &sec.resources {
+                if let Some(rt) = &r.total {
+                    computed += rt.value;
+                }
+            }
+            if computed > 0.0 && (t.value - computed).abs() > (2.0_f64).max(t.value * 0.005) {
+                push_pages(&sec.pages);
+            }
+        }
+    }
+    for pos in doc.all_positions() {
+        if let (Some(q), Some(pr), Some(t)) = (&pos.quantity, &pos.price, &pos.total) {
+            let expect = q.value * pr.value;
+            if (t.value - expect).abs() > (1.0_f64).max(expect * 0.02) {
+                push_pages(&pos.pages);
+            }
+        }
+    }
+    v.sort_unstable();
+    v
+}
+
 /// Запасной путь: страница без таблицы — простые текстовые строки.
 fn text_rows(page: usize, result: &OcrResult) -> Vec<semantics::DocRow> {
     result
@@ -238,6 +312,62 @@ pub fn parse_estimate(engine: Option<&OcrEngine>, pages: &[PageInput]) -> Estima
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Скоринг валидации: ошибки дороже предупреждений; чистая смета = 0
+    /// (retry-проход не запускается).
+    #[test]
+    fn validation_score_clean_is_zero() {
+        use crate::estimate::model::{Num, Position, Section, Totals};
+        let mk = |sec_total: Option<f64>| {
+            let p = Position {
+                line: Some(1),
+                cipher: None,
+                name: "Работа".to_string(),
+                unit: None,
+                quantity: Some(Num::new(2.0, "2")),
+                price: Some(Num::new(100.0, "100")),
+                total: Some(Num::new(200.0, "200")),
+                resources: Vec::new(),
+                pages: vec![1],
+                raw: Vec::new(),
+            };
+            EstimateDocument {
+                meta: Default::default(),
+                sections: vec![Section {
+                    number: None,
+                    title: "Раздел".to_string(),
+                    subsections: Vec::new(),
+                    positions: vec![p],
+                    resources: Vec::new(),
+                    total: sec_total.map(|v| Num::new(v, v.to_string())),
+                    pages: vec![1],
+                }],
+                totals: Totals {
+                    total: sec_total.map(|v| Num::new(v, v.to_string())),
+                    ..Default::default()
+                },
+                validation: Default::default(),
+                unparsed_lines: Vec::new(),
+                auto_repairs: 0,
+                pages: 1,
+            }
+        };
+        // сходится: score == 0, подозрительных страниц нет
+        let mut doc = mk(Some(200.0));
+        validate::validate(&mut doc);
+        assert_eq!(
+            validation_score(&doc),
+            0,
+            "warnings: {:?}",
+            doc.validation.warnings
+        );
+        assert!(suspect_pages(&doc).is_empty());
+        // расходится: score > 0, страница подозрительна
+        let mut doc = mk(Some(999.0));
+        validate::validate(&mut doc);
+        assert!(validation_score(&doc) > 0);
+        assert_eq!(suspect_pages(&doc), vec![1]);
+    }
 
     /// Полный конвейер на синтетической странице (без картинок и моделей):
     /// блоки → структура таблицы → иерархия → валидация.
