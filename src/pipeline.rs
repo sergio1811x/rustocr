@@ -143,6 +143,15 @@ fn rec_chunk() -> usize {
         .clamp(1, 64)
 }
 
+/// Цепочка пост-обработки текста блока (общая для OCR и текстового слоя
+/// PDF): единицы м³/м², буквы-двойники цифр, перегруппировка разрядов,
+/// одинокие «О» → 0.
+pub(crate) fn normalize_block_text(raw: &str) -> String {
+    fix_lone_letter_o(&normalize_numbers(&normalize_digit_lookalikes(
+        &normalize_units(raw),
+    )))
+}
+
 /// Лёгкая пост-обработка: типовые единицы измерения в сметах.
 /// «м3»/«м2» — это м³/м² (строчная «м», за ней цифра, перед ней не буква:
 /// «М300» — марка бетона, её не трогаем).
@@ -339,6 +348,24 @@ fn regroup_number(token: &str) -> String {
     let mut res = grouped;
     res.push_str(frac);
     res
+}
+
+impl OcrResult {
+    /// Тот же результат в другом масштабе (страница перерендерена в другом
+    /// DPI): координаты блоков умножаются на фактор. Нужно retry-проходу
+    /// сметы — чистые страницы не перечитываются, а лишь масштабируются.
+    pub fn scaled(&self, f: f32) -> OcrResult {
+        let mut r = self.clone();
+        for b in &mut r.blocks {
+            for p in &mut b.quad {
+                p.x *= f;
+                p.y *= f;
+            }
+        }
+        r.width = (self.width as f32 * f).round() as u32;
+        r.height = (self.height as f32 * f).round() as u32;
+        r
+    }
 }
 
 /// Режим языка: авто (обе модели), только русский, только английский.
@@ -660,9 +687,7 @@ impl OcrEngine {
                 break;
             }
             let (raw, conf, _) = &results[i];
-            let text = fix_lone_letter_o(&normalize_numbers(&normalize_digit_lookalikes(
-                &normalize_units(raw),
-            )));
+            let text = normalize_block_text(raw);
             let lang = detect_lang(&text);
             blocks.push(Block {
                 text: text.clone(),

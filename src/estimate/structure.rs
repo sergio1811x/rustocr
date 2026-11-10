@@ -410,7 +410,12 @@ pub fn layout_page(
         .collect();
 
     if let (Some(engine), Some(img)) = (engine, img) {
-        for (bi, blk) in blocks.iter().enumerate() {
+        'outer: for (bi, blk) in blocks.iter().enumerate() {
+            // блок из текстового слоя PDF («txt») уже содержит идеальный
+            // текст — резать и перечитывать его OCR-ом нет смысла
+            if blk.lang == "txt" {
+                continue 'outer;
+            }
             let (cx, _, w, _) = block_geom(blk);
             let x0 = cx - w / 2.0;
             let x1 = cx + w / 2.0;

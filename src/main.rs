@@ -9,6 +9,7 @@ mod estimate;
 mod geom;
 mod imgio;
 mod pdf;
+mod pdf_text;
 mod pipeline;
 mod rec;
 mod server;
@@ -169,8 +170,11 @@ fn cli(
     cfg: &CliCfg,
     base_opts: &EngineOptions,
 ) -> Result<()> {
-    let mut xlsx_pages: Vec<(std::sync::Arc<Vec<image::RgbImage>>, Vec<OcrResult>)> =
-        Vec::new();
+    let mut xlsx_pages: Vec<(
+        std::sync::Arc<Vec<image::RgbImage>>,
+        Vec<OcrResult>,
+        Option<std::sync::Arc<Vec<pdf_text::PageText>>>,
+    )> = Vec::new();
 
     for path in files {
         let is_pdf = pdf::is_pdf_path(path) || {
@@ -197,9 +201,31 @@ fn cli(
                 render_ms
             );
 
+            // гибрид: у «цифровых» PDF берём идеальный текстовый слой,
+            // страницы-сканы читаем OCR (RUSTOCR_TEXT_LAYER=0 — выключить)
+            let layer = text_layer_for(path, images.len() as u32);
+
             let t1 = std::time::Instant::now();
-            let results = run_pages(engine.clone(), ort_env, images.clone(), cfg.jobs, base_opts)?;
+            let results = run_pages(
+                engine.clone(),
+                ort_env,
+                images.clone(),
+                cfg.jobs,
+                base_opts,
+                layer.clone(),
+            )?;
             let ocr_ms = t1.elapsed().as_millis() as u64;
+            let tl_pages = layer
+                .as_deref()
+                .map(|l| l.iter().filter(|p| p.usable()).count())
+                .unwrap_or(0);
+            if tl_pages > 0 {
+                eprintln!(
+                    "-- текстовый слой: {} из {} стр. без OCR",
+                    tl_pages,
+                    images.len()
+                );
+            }
 
             if cfg.json_out {
                 let pages: Vec<serde_json::Value> = results
@@ -236,7 +262,7 @@ fn cli(
                 render_ms + ocr_ms,
                 ocr_ms as f64 / results.len().max(1) as f64 / 1000.0
             );
-            xlsx_pages.push((images, results));
+            xlsx_pages.push((images, results, layer));
         } else {
             // лимиты декодирования — как в HTTP-сервере
             let mut img = crate::imgio::open_file(path)?.to_rgb8();
@@ -254,14 +280,14 @@ fn cli(
                     if res.skipped > 0 { format!(" · ПОТЕРЯНО ФРАГМЕНТОВ: {}", res.skipped) } else { String::new() }
                 );
             }
-            xlsx_pages.push((std::sync::Arc::new(vec![img]), vec![res]));
+            xlsx_pages.push((std::sync::Arc::new(vec![img]), vec![res], None));
         }
     }
 
     if let Some(xlsx_path) = &cfg.xlsx {
         let mut imgs: Vec<image::RgbImage> = Vec::new();
         let mut ress: Vec<OcrResult> = Vec::new();
-        for (i, r) in xlsx_pages.iter() {
+        for (i, r, _) in xlsx_pages.iter() {
             imgs.extend(i.iter().cloned());
             ress.extend(r.iter().cloned());
         }
@@ -271,9 +297,9 @@ fn cli(
 
     // сметный конвейер: иерархия + валидация (+ DTO ПАЗЛ)
     if cfg.estimate.is_some() || cfg.pazl.is_some() {
-        for (path, (imgs, ress)) in files.iter().zip(xlsx_pages.iter()) {
+        for (path, (imgs, results, layer)) in files.iter().zip(xlsx_pages.iter()) {
             let t0 = std::time::Instant::now();
-            let pages: Vec<estimate::PageInput> = ress
+            let pages: Vec<estimate::PageInput> = results
                 .iter()
                 .enumerate()
                 .map(|(n, r)| estimate::PageInput {
@@ -289,11 +315,11 @@ fn cli(
             // из двух вариантов остаётся лучший по валидации
             if let Some(doc2) = estimate_retry(
                 &engine,
-                &ort_env,
                 path,
                 cfg,
-                base_opts,
                 imgs,
+                results,
+                layer.as_deref().map(|v| v.as_slice()),
                 &doc,
             ) {
                 doc = doc2;
@@ -346,19 +372,38 @@ fn est_retry_dpi(cfg: &CliCfg) -> u32 {
     }
 }
 
-/// Повторный проход сметного конвейера: тот же PDF, больший DPI и
-/// принудительное выравнивание фона для страниц с подозрительными итогами
-/// («Новый сруб»: итоги напечатаны бледно-серым по серой заливке — обычный
-/// детектор их не видит). Возвращает `Some(doc)`, только если вариант стал
-/// лучше по валидации (score ниже) — перечитывание не может ухудшить
-/// результат, только потратить время.
+/// Текстовый слой PDF (если есть) для всех страниц документа.
+/// None — слой недоступен или выключен: все страницы идут в OCR.
+fn text_layer_for(
+    path: &Path,
+    n_pages: u32,
+) -> Option<std::sync::Arc<Vec<pdf_text::PageText>>> {
+    if std::env::var("RUSTOCR_TEXT_LAYER").as_deref() == Ok("0") {
+        return None;
+    }
+    match pdf_text::extract(path, 1, n_pages) {
+        Ok(v) => Some(std::sync::Arc::new(v)),
+        Err(e) => {
+            eprintln!("-- текстовый слой недоступен ({}), читаю OCR", e);
+            None
+        }
+    }
+}
+
+/// Повторный проход сметного конвейера (арифметика не сошлась):
+/// перерендер в большем DPI, но перечитываются OCR-ом только ПОДОЗРИТЕЛЬНЫЕ
+/// страницы (бледные итоги, битые ячейки — им ещё и выравнивается фон);
+/// страницы из текстового слоя пересобираются точно (слой DPI-независим),
+/// чистые OCR-страницы лишь масштабируются. Возвращает `Some(doc)`, только
+/// если вариант стал лучше по валидации (score ниже) — перечитывание не
+/// может ухудшить результат, только потратить время.
 fn estimate_retry(
     engine: &Arc<OcrEngine>,
-    ort_env: &ort::environment::Environment,
     path: &std::path::Path,
     cfg: &CliCfg,
-    base_opts: &EngineOptions,
     imgs: &std::sync::Arc<Vec<image::RgbImage>>,
+    results: &[OcrResult],
+    layer: Option<&[pdf_text::PageText]>,
     first: &estimate::EstimateDocument,
 ) -> Option<estimate::EstimateDocument> {
     let dpi2 = est_retry_dpi(cfg);
@@ -374,13 +419,14 @@ fn estimate_retry(
     }
     let suspects = estimate::suspect_pages(first);
     eprintln!(
-        "-- Смета: арифметика не сошлась (оценка {}), перечитываю PDF в {} DPI{}",
+        "-- Смета: арифметика не сошлась (оценка {}), перечитываю подозрительные страницы {:?} в {} DPI{}",
         score1,
+        suspects,
         dpi2,
         if suspects.is_empty() {
             String::new()
         } else {
-            format!(", выравниваю фон страниц {:?}", suspects)
+            " с выравниванием фона".to_string()
         }
     );
     let t0 = std::time::Instant::now();
@@ -393,15 +439,23 @@ fn estimate_retry(
             crate::det::flatten_background(&mut images2[p - 1]);
         }
     }
+    let factor = dpi2 as f32 / cfg.dpi.max(1) as f32;
+    let mut results2: Vec<OcrResult> = Vec::with_capacity(images2.len());
+    for (i, img2) in images2.iter().enumerate() {
+        let tl = layer.and_then(|l| l.get(i)).filter(|p| p.usable());
+        let r = match tl {
+            Some(p) => p.to_ocr_result(img2.width(), img2.height()),
+            None => {
+                if suspects.contains(&(i + 1)) {
+                    engine.recognize(img2).ok()?
+                } else {
+                    results.get(i)?.scaled(factor)
+                }
+            }
+        };
+        results2.push(r);
+    }
     let images2 = std::sync::Arc::new(images2);
-    let results2 = run_pages(
-        engine.clone(),
-        ort_env,
-        images2.clone(),
-        cfg.jobs,
-        base_opts,
-    )
-    .ok()?;
     let pages2: Vec<estimate::PageInput> = results2
         .iter()
         .enumerate()
@@ -424,6 +478,19 @@ fn estimate_retry(
     (score2 < score1).then_some(second)
 }
 
+/// Результат страницы из текстового слоя (если он достаточно плотный).
+/// None — страница идёт в OCR.
+fn text_layer_result(
+    layer: Option<&[pdf_text::PageText]>,
+    idx: usize,
+    img: &image::RgbImage,
+) -> Option<OcrResult> {
+    layer
+        .and_then(|l| l.get(idx))
+        .filter(|p| p.usable())
+        .map(|p| p.to_ocr_result(img.width(), img.height()))
+}
+
 /// Записать JSON в файл или вывести в stdout.
 fn emit_json(v: &serde_json::Value, out: Option<&Path>, tag: &str) -> Result<()> {
     let s = serde_json::to_string_pretty(v)?;
@@ -437,15 +504,19 @@ fn emit_json(v: &serde_json::Value, out: Option<&Path>, tag: &str) -> Result<()>
     Ok(())
 }
 
-/// Распознать страницы PDF. На 2 ядрах и меньше — последовательно одним
-/// движком (ORR и так занимает оба ядра), на 4+ — по движку на долю ядер,
-/// страницы идут параллельно. Явный --jobs перекрывает автоматике.
+/// Распознать страницы PDF. Гибрид: страница с плотным текстовым слоем
+/// собирается из слоя (без детекции и распознавания — быстро и без
+/// ошибок OCR), остальных — обычный OCR. На 2 ядрах и меньше —
+/// последовательно одним движком (ORR и так занимает оба ядра), на 4+ —
+/// по движку на долю ядер, страницы идут параллельно. Явный --jobs
+/// перекрывает автоматике.
 fn run_pages(
     engine: Arc<OcrEngine>,
     ort_env: &ort::environment::Environment,
     images: std::sync::Arc<Vec<image::RgbImage>>,
     jobs_opt: Option<usize>,
     base_opts: &EngineOptions,
+    layer: Option<std::sync::Arc<Vec<pdf_text::PageText>>>,
 ) -> Result<Vec<OcrResult>> {
     let cores = std::thread::available_parallelism()
         .map(|n| n.get())
@@ -465,8 +536,12 @@ fn run_pages(
     if jobs <= 1 {
         let engine2 = engine.clone();
         let imgs = images.clone();
+        let tl = layer.as_deref().map(|v| v.as_slice());
         return (0..images.len())
-            .map(|i| engine2.recognize(&imgs[i]))
+            .map(|i| match text_layer_result(tl, i, &imgs[i]) {
+                Some(r) => Ok(r),
+                None => engine2.recognize(&imgs[i]),
+            })
             .collect();
     }
 
@@ -503,6 +578,7 @@ fn run_pages(
         let queue = queue.clone();
         let done = done.clone();
         let imgs = images.clone();
+        let layer = layer.clone();
         let h = std::thread::spawn(move || -> Result<()> {
             loop {
                 let next = {
@@ -510,7 +586,10 @@ fn run_pages(
                     q.iter_mut().find(|s| s.is_some()).and_then(|s| s.take())
                 };
                 let Some(idx) = next else { break };
-                let r = eng.recognize(&imgs[idx])?;
+                let r = match text_layer_result(layer.as_deref().map(|v| v.as_slice()), idx, &imgs[idx]) {
+                    Some(r) => r,
+                    None => eng.recognize(&imgs[idx])?,
+                };
                 done.lock().unwrap()[idx] = Some(r);
             }
             Ok(())

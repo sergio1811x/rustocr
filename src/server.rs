@@ -286,9 +286,19 @@ async fn process_doc(st: AppState, bytes: Bytes, mode: DocMode) -> Response {
                 let t_r = std::time::Instant::now();
                 let images = job.render_range(&pdf_path, first, last, dpi)?;
                 render_ms += t_r.elapsed().as_millis() as u64;
+                // гибрид: текстовый слой диапазона страниц (цифровые PDF
+                // читаются без OCR, с идеальной точностью и мгновенно)
+                let layer = if std::env::var("RUSTOCR_TEXT_LAYER").as_deref() == Ok("0") {
+                    Vec::new()
+                } else {
+                    crate::pdf_text::extract(&pdf_path, first, last).unwrap_or_default()
+                };
                 for (k, img) in images.into_iter().enumerate() {
                     let page_no = first as usize + k;
-                    let r = engine.recognize(&img)?;
+                    let r = match layer.get(k).filter(|p| p.usable()) {
+                        Some(p) => p.to_ocr_result(img.width(), img.height()),
+                        None => engine.recognize(&img)?,
+                    };
                     skipped += r.skipped;
                     match mode {
                         DocMode::Ocr => {
