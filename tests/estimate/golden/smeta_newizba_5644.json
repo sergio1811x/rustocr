@@ -1,21 +1,56 @@
 {
  "pages": 6,
- "sections": 3,
- "positions": 172,
- "resources": 4,
+ "sections": 14,
+ "positions": 201,
+ "resources": 5,
  "table_rows": 270,
- "unclassified_rows": 117,
- "qty_price_checked": 154,
- "section_totals_checked": 1,
+ "unclassified_rows": 9,
+ "qty_price_checked": 180,
+ "section_totals_checked": 12,
  "total": null,
  "vat": null,
  "total_with_vat": null,
  "errors": [
+  "section_total_mismatch",
+  "section_total_mismatch",
+  "section_total_mismatch",
+  "section_total_mismatch",
+  "section_total_mismatch",
+  "section_total_mismatch",
+  "section_total_mismatch",
+  "section_total_mismatch",
+  "section_total_mismatch",
   "section_total_mismatch"
  ],
  "warnings": [
+  "auto_repair",
   "doc_total_missing",
   "position_duplicate",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
   "qty_price_mismatch",
   "qty_price_mismatch",
   "qty_price_mismatch",
@@ -173,13 +208,68 @@
  ],
  "sections_detail": [
   {
-   "title": "НоваяИзба",
-   "positions": 0,
-   "total": 850.0
+   "title": "(без разделов)",
+   "positions": 1,
+   "total": null
   },
   {
-   "title": "индивидуальной опалубки",
-   "positions": 172,
+   "title": "Подготовительные работы",
+   "positions": 5,
+   "total": 84000.0
+  },
+  {
+   "title": "Земляные работы",
+   "positions": 4,
+   "total": 46784.05
+  },
+  {
+   "title": "Фундамент",
+   "positions": 18,
+   "total": 372169.65
+  },
+  {
+   "title": "Коробка дома",
+   "positions": 53,
+   "total": 1447307.0
+  },
+  {
+   "title": "Устройство перекрытия 2-го этажа",
+   "positions": 6,
+   "total": 79828.0
+  },
+  {
+   "title": "Устройство крыльца",
+   "positions": 10,
+   "total": 7643.16
+  },
+  {
+   "title": "Устройство вентканалов",
+   "positions": 14,
+   "total": 138857.0
+  },
+  {
+   "title": "Стропильная система кровли",
+   "positions": 48,
+   "total": 718451.0
+  },
+  {
+   "title": "Окна, двери",
+   "positions": 15,
+   "total": 110013.0
+  },
+  {
+   "title": "Утепление кровли",
+   "positions": 6,
+   "total": 55371.0
+  },
+  {
+   "title": "Подшивка свесов",
+   "positions": 11,
+   "total": 84625.0
+  },
+  {
+   "title": "Система водостока",
+   "positions": 10,
    "total": 2.0
   },
   {

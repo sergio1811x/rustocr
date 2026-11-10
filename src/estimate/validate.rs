@@ -52,7 +52,11 @@ pub fn validate(doc: &mut EstimateDocument) {
     if let Some(t) = &doc.totals.total {
         if n_with_total > 0 {
             let diff = (sum_sections - t.value).abs();
-            if diff > tolerance(t.value) {
+            // «ВСЕГО по смете» в Гранд-Сметах включает НДС: Σ разделов +
+            // НДС = итог — это не расхождение
+            let vat_v = doc.totals.vat.as_ref().map(|v| v.value).unwrap_or(0.0);
+            let diff_with_vat = (sum_sections + vat_v - t.value).abs();
+            if diff > tolerance(t.value) && diff_with_vat > tolerance(t.value) {
                 // разница может быть итогом раздела(ов), не входящих в
                 // комплектацию («Итого дом в комплектации "КОРОБКА"» без
                 // опциональных разделов вроде перегородок) — это не
@@ -101,9 +105,15 @@ pub fn validate(doc: &mut EstimateDocument) {
     // --- НДС ---
     if let (Some(total), Some(vat)) = (&doc.totals.total, &doc.totals.vat) {
         if let Some(rate) = doc.totals.vat_rate {
-            let expect = total.value * rate;
-            let diff = (vat.value - expect).abs();
-            if diff > tolerance(expect) {
+            // база НДС — «Итого» ДО налога; если итог сметы уже включает
+            // НДС (база = итог − НДС), проверяем обе раскладки — иначе
+            // «НДС 18% от итога с НДС» даёт ложное предупреждение
+            let base_ex_vat = (total.value - vat.value).max(0.0);
+            let expect_direct = total.value * rate;
+            let expect_ex = base_ex_vat * rate;
+            let ok = (vat.value - expect_direct).abs() <= tolerance(expect_direct)
+                || (vat.value - expect_ex).abs() <= tolerance(expect_ex);
+            if !ok {
                 rep.warn(
                     "vat_mismatch",
                     format!(
@@ -111,7 +121,7 @@ pub fn validate(doc: &mut EstimateDocument) {
                         vat.value,
                         (rate * 100.0).round(),
                         total.value,
-                        expect
+                        expect_direct
                     ),
                     Some("документ".to_string()),
                 );

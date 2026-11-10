@@ -221,22 +221,60 @@ pub fn position_cipher(s: &str) -> Option<String> {
     None
 }
 
-/// Код ресурса (не расценка): «1.1-1-2345», «101-0797», «060148».
+/// Код ресурса (не расценка): «1.1-1-2345», «1.102-0008», «101-0797»,
+/// «060148». Код может нести OCR-мусор в той же ячейке («Уд 1.102-0008»)
+/// или разорванную точкой пару токенов («3 102-0061»).
 pub fn resource_code(s: &str) -> Option<String> {
     let t = s.trim();
     if t.is_empty() {
         return None;
     }
-    // 1.1-1-2345
+    if resource_code_exact(t) {
+        return Some(t.to_string());
+    }
+    // «3 102-0061» — точка прочиталась пробелом (пробуем ДО токен-скана:
+    // иначе голый «102-0061» перехватит проверку раньше составного кода)
+    let toks: Vec<&str> = t.split_whitespace().collect();
+    for w in toks.windows(2) {
+        let joined = format!("{}.{}", w[0], w[1]);
+        if resource_code_exact(&joined) {
+            return Some(joined);
+        }
+    }
+    // «Уд 1.102-0008», «ya 2.102-0049» — код внутри ячейки с мусором.
+    // Шестизначные числа внутри текста НЕ считаем кодами: это цены/суммы
+    // («Работа автокрана смена 320000 1,5 48 000») — код машины занимает
+    // ячейку целиком и стоит в начале строки
+    for tok in t.split_whitespace() {
+        if is_six_digit(tok) {
+            continue;
+        }
+        if resource_code_exact(tok) {
+            return Some(tok.to_string());
+        }
+    }
+    None
+}
+
+fn resource_code_exact(t: &str) -> bool {
+    // 1.1-1-2345 и 1.102-0008
     if let Some((head, rest)) = t.split_once('.') {
         if !head.is_empty() && head.len() <= 2 && head.chars().all(|c| c.is_ascii_digit()) {
             let rparts: Vec<&str> = rest.split('-').collect();
-            if rparts.len() >= 3
-                && rparts[..2].iter().all(|p| !p.is_empty() && p.chars().all(|c| c.is_ascii_digit()))
+            if (rparts.len() >= 3
+                && rparts[..2]
+                    .iter()
+                    .all(|p| !p.is_empty() && p.chars().all(|c| c.is_ascii_digit()))
                 && rparts[2].len() >= 3
-                && rparts[2].chars().all(|c| c.is_ascii_digit())
+                && rparts[2].chars().all(|c| c.is_ascii_digit()))
+                || (rparts.len() == 2
+                    && rparts
+                        .iter()
+                        .all(|p| !p.is_empty() && p.chars().all(|c| c.is_ascii_digit()))
+                    && rparts[0].len() == 3
+                    && rparts[1].len() == 4)
             {
-                return Some(t.to_string());
+                return true;
             }
         }
     }
@@ -247,13 +285,28 @@ pub fn resource_code(s: &str) -> Option<String> {
         && parts[1].len() == 4
         && parts.iter().all(|p| p.chars().all(|c| c.is_ascii_digit()))
     {
-        return Some(t.to_string());
+        return true;
     }
     // 060148 — код машины (6 цифр)
-    if t.len() == 6 && t.chars().all(|c| c.is_ascii_digit()) {
-        return Some(t.to_string());
-    }
-    None
+    is_six_digit(t)
+}
+
+/// Ячейка из ровно шести цифр («060148», «320000»): может быть кодом
+/// машины — а может быть ценой/суммой. Различает положение в строке
+/// (см. `is_first_nonempty`).
+fn is_six_digit(t: &str) -> bool {
+    let t = t.trim();
+    t.len() == 6 && t.chars().all(|c| c.is_ascii_digit())
+}
+
+/// Ячейка с индексом i — первая непустая в строке. Код машины всегда
+/// стоит первой непустой ячейкой («060148 Кран…»); шестизначное число
+/// правее наименования («Работа автокрана смена 320000 1,5 48 000») —
+/// это цена, а не код.
+fn is_first_nonempty(row: &DocRow, i: usize) -> bool {
+    row.cells[..i]
+        .iter()
+        .all(|(_, _, t)| t.trim().is_empty())
 }
 
 /// Похоже ли на дату: «07.12.2021», «7.12.21».
@@ -283,8 +336,172 @@ enum Role {
     Total,
 }
 
+/// Свернуть латинские буквы-двойники в кириллицу — ТОЛЬКО для матчинга
+/// ключевых слов (шапки/итоги): OCR регулярно печатает «Bcero» вместо
+/// «Всего», «cметe» вместо «смете», и роли колонок/итоги теряются.
+/// Выходной текст документов не меняется — только распознавание маркеров.
+fn fold_latin_lookalikes(lower: &str) -> String {
+    lower
+        .chars()
+        .map(|c| match c {
+            'a' => 'а',
+            'b' => 'в',
+            'c' => 'с',
+            'e' => 'е',
+            'h' => 'н',
+            'k' => 'к',
+            'm' => 'м',
+            'o' => 'о',
+            'p' => 'р',
+            'r' => 'г', // «Bcero» → «Всего»: Г читается латинской r
+            't' => 'т',
+            'x' => 'х',
+            'y' => 'у',
+            'n' => 'и', // «no cмeтe» → «по смете»
+            'і' => 'и', // украинская І — частая подмена кириллической И
+            _ => c,
+        })
+        .collect()
+}
+
+/// Строка без пробелов с согнутыми латинскими двойниками: каноническая
+/// форма для матчинга маркеров, разорванных OCR-пробелами («htt p://»,
+/// «по с смете», «Ра аздел»). Пробелы OCR вставляет ВНУТРИ слов.
+fn despace_fold(lower: &str) -> String {
+    fold_latin_lookalikes(&lower.chars().filter(|c| !c.is_whitespace()).collect::<String>())
+}
+
+/// Только буквы, слитно, в нижнем регистре с двойниками: форма для
+/// нечёткого сравнения ключевых слов («затра ты» → «затраты»,
+/// «прибыл 1ь» → «прибыль»).
+fn letters_squeezed(lower: &str) -> String {
+    fold_latin_lookalikes(&lower.chars().filter(|c| c.is_alphabetic()).collect::<String>())
+}
+
+/// Расстояние Левенштейна по символам (строки-ключевые слова короткие).
+fn edit_distance_chars(a: &[char], b: &[char]) -> usize {
+    let (n, m) = (a.len(), b.len());
+    if n == 0 {
+        return m;
+    }
+    if m == 0 {
+        return n;
+    }
+    let mut prev: Vec<usize> = (0..=m).collect();
+    let mut cur = vec![0usize; m + 1];
+    for i in 1..=n {
+        cur[0] = i;
+        for j in 1..=m {
+            let cost = if a[i - 1] == b[j - 1] { 0 } else { 1 };
+            cur[j] = (prev[j] + 1).min(cur[j - 1] + 1).min(prev[j - 1] + cost);
+        }
+        std::mem::swap(&mut prev, &mut cur);
+    }
+    prev[m]
+}
+
+fn edit_distance(a: &str, b: &str) -> usize {
+    edit_distance_chars(&a.chars().collect::<Vec<_>>(), &b.chars().collect::<Vec<_>>())
+}
+
+/// Нечёткое вхождение ключевого слова (в форме `letters_squeezed`) в
+/// строку: OCR рвёт и искажает ключевые слова («Сметна ая прибыл 1ь» =
+/// «Сметная прибыль»), а терять маркеры ресурсов/итогов нельзя. Сначала
+/// дешёвый предфильтр по общим символам, затем скользящие окна с
+/// расстоянием ≤ 1–2 (длинное слово — больше допуск).
+fn fuzzy_contains(hay: &str, needle: &str) -> bool {
+    let hay: Vec<char> = hay.chars().collect();
+    let needle: Vec<char> = needle.chars().collect();
+    let (n, m) = (hay.len(), needle.len());
+    if m == 0 || n + 2 < m {
+        return false;
+    }
+    let max_d = if m >= 10 { 2 } else { 1 };
+    // предфильтр: общих символов (multiset) не меньше m - max_d
+    let mut need: [usize; 64] = [0; 64];
+    let idx = |c: char| -> Option<usize> {
+        // только кириллица и латиница нижнего регистра — всё, что даёт fold
+        let u = c as u32;
+        if ('а' as u32..='я' as u32).contains(&u) {
+            Some((u - 'а' as u32) as usize)
+        } else if c.is_ascii_lowercase() {
+            Some(32 + (u - 'a' as u32) as usize)
+        } else {
+            None
+        }
+    };
+    for &c in &needle {
+        if let Some(i) = idx(c) {
+            need[i] += 1;
+        }
+    }
+    let required = m.saturating_sub(max_d);
+    let mut common = 0usize;
+    'outer: for &c in &hay {
+        if let Some(i) = idx(c) {
+            if need[i] > 0 {
+                need[i] -= 1;
+                common += 1;
+                if common >= required {
+                    break 'outer;
+                }
+            }
+        }
+    }
+    if common < required {
+        return false;
+    }
+    for start in 0..n {
+        for len in m..=(m + max_d).min(n - start) {
+            if edit_distance_chars(&hay[start..start + len], &needle) <= max_d {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+/// Колонтитулы, URL, контакты, логотипы — «мебель» страницы, не
+/// содержимое сметы: не позиции, не итоги и не «неразобранные» строки.
+/// Вход — строка в нижнем регистре (свернём на всякий случай).
+fn is_junk_line(lower: &str) -> bool {
+    let owned;
+    let lower = if lower.chars().any(|c| c.is_uppercase()) {
+        owned = lower.to_lowercase();
+        owned.as_str()
+    } else {
+        lower
+    };
+    let sq = despace_fold(lower);
+    if sq.contains("http")
+        || sq.contains("www.")
+        || sq.contains(".ru")
+        || sq.contains(".com")
+        || sq.contains("@")
+        || sq.contains("e-mail")
+        || sq.contains("email")
+        || sq.contains("mail.ru")
+        || sq.contains("тел.")
+        || sq.contains("+7(")
+        || sq.contains("факс")
+        || sq.contains("страниц")
+        || sq.contains("верси")
+        || sq.contains("гранд-смет")
+        || sq.contains("грандсмет")
+        || sq.contains("ул.")
+    {
+        return true;
+    }
+    let lz = letters_squeezed(lower);
+    if lz.contains("грандсмет") {
+        return true;
+    }
+    // «Ver 6.2.7» / «версия 6.2.7 20221031» — латинский след программы
+    lz.starts_with("ver") && lower.chars().any(|c| c.is_ascii_digit())
+}
+
 fn role_of_header(text: &str) -> Option<Role> {
-    let t = text.trim().to_lowercase();
+    let t = fold_latin_lookalikes(&text.trim().to_lowercase());
     if t.is_empty() {
         return None;
     }
@@ -322,16 +539,69 @@ fn is_header_row(row: &DocRow) -> bool {
     if !row.numbers().is_empty() {
         return false;
     }
-    let lower = row.lower();
+    let lower = fold_latin_lookalikes(&row.lower());
     if lower.contains("наименован") {
         return true;
     }
     let marks = [
         "№", "ед", "кол", "цена", "сумма", "всего", "обоснов", "стоимост", "затрат", "труд",
         "машин", "материал",
+        // трёхуровневые шапки Гранд-Сметы: строка листьев «Всего | Осн.З/п |
+        // Эк.Маш | 3/пМех» — крупных марок всего две, узнаём по мелким
+        "маш", "мех", "осн", "з/п", "3/п",
     ];
     let hits = marks.iter().filter(|m| lower.contains(*m)).count();
     hits >= 3
+}
+
+/// Промежуточные сводки Гранд-Сметы в конце документа: «Итого прямые
+/// затраты…», «Итого строительные/монтажные работы», «Непредвиденные
+/// затраты 2%». Это НЕ итоги (не раздел/документ) и НЕ позиции — но без
+/// фильтра становятся «позициями» и ломают Σ разделов. Нечёткое
+/// сравнение — OCR рвёт слова пробелами и глотает буквы.
+fn is_intermediate_summary(lower: &str) -> bool {
+    let lower = &fold_latin_lookalikes(lower);
+    let lz = letters_squeezed(lower);
+    is_intermediate_summary_text(lower, &lz)
+}
+
+fn is_intermediate_summary_text(lower: &str, lz: &str) -> bool {
+    lower.contains("прямые затраты")
+        || lower.contains("непредвиден")
+        || fuzzy_contains(lz, "прямыезатраты")
+        || fuzzy_contains(lz, "непредвиденныезатраты")
+        || (lz.starts_with("итого")
+            && (lower.contains("строительные работы")
+                || lower.contains("монтажные работы")
+                || lower.contains("прочие работы")
+                || lower.contains("прочие затраты")
+                || fuzzy_contains(lz, "строительныеработы")
+                || fuzzy_contains(lz, "монтажныеработы")
+                || fuzzy_contains(lz, "прочиеработы")
+                || fuzzy_contains(lz, "прочиезатраты")))
+}
+
+/// Строка шапки ДОКУМЕНТА до табличного заголовка: «СОГЛАСОВАНО…»,
+/// «Сметная стоимость 2010,425 тыс. руб.», «Составлен(а)…». Такие
+/// строки в Гранд-Сметах лежат в сетке (метка | значение) и без
+/// фильтра становятся «позициями» сметы.
+fn meta_keyword_row(lower: &str) -> bool {
+    [
+        "согласован",
+        "утвержда",
+        "сметная стоимость",
+        "сметная трудоемк",
+        "средства на оплату",
+        "составлен",
+        "основание:",
+        "наименование стройки",
+        "строительных работ",
+        "монтажных работ",
+        "тыс. руб",
+        "тыс.руб",
+    ]
+    .iter()
+    .any(|k| lower.contains(k))
 }
 
 // ---------- итоги ----------
@@ -350,27 +620,43 @@ fn totals_kind(row: &DocRow) -> Option<(TotalKind, Option<f64>)> {
 }
 
 fn totals_kind_text(lower: &str) -> Option<(TotalKind, Option<f64>)> {
-    if lower.starts_with("ндс") || lower.starts_with("сумма ндс") {
+    // «НДС» целиком и осколки OCR: «H 18%», «нд C 18%», «ндс 18%» —
+    // буквы до цифр образуют обрывок «ндс» (латинские двойники c/h),
+    // дальше обязательна ставка с процентом
+    let lower = &fold_latin_lookalikes(lower);
+    let squeezed: String = lower.chars().filter(|c| !c.is_whitespace()).collect();
+    // каноническая форма для нечётких маркеров: «Итог о прям мые затра ты»
+    // → «итогопряммыезатраты» (пробелы внутри слов схлопываются)
+    let lz = letters_squeezed(lower);
+    // голова строки — итоговое слово (даже разорванное пробелами)
+    let head = lz.starts_with("итого")
+        || lz.starts_with("итоги")
+        || lz.starts_with("всего")
+        || lz.starts_with("подытог");
+    if squeezed.starts_with("ндс")
+        || squeezed.starts_with("суммандс")
+        || vat_label_mangle(&squeezed)
+    {
         return Some((TotalKind::Vat, parse_vat_rate(lower)));
     }
     if lower.starts_with("всего с ндс") || lower.starts_with("итого с ндс") {
         return Some((TotalKind::DocWithVat, None));
     }
+    // «Итого с непредвиденными» — база документа (перед НДС), а НЕ итог
+    // текущего раздела: иначе затирает итог последнего раздела
+    if lower.starts_with("итого с непредвиден") || lower.starts_with("всего с непредвиден") {
+        return Some((TotalKind::Doc, None));
+    }
     // разбивка по видам работ/затрат в конце Гранд-Сметы и «прямые затраты» —
-    // промежуточные суммы, не итог раздела и не итог сметы
-    if lower.contains("прямые затраты")
-        || (lower.starts_with("итого")
-            && (lower.contains("строительные работы")
-                || lower.contains("монтажные работы")
-                || lower.contains("прочие работы")
-                || lower.contains("прочие затраты")))
-    {
+    // промежуточные суммы, не итог раздела и не итог сметы (нечёткое
+    // сравнение: OCR рвёт слова пробелами — «прям мые затра ты»)
+    if is_intermediate_summary_text(lower, &lz) {
         return None;
     }
-    if lower.contains("по разделу") {
+    if lower.contains("по разделу") || squeezed.contains("поразделу") {
         return Some((TotalKind::Section, None));
     }
-    if lower.contains("по подразделу") {
+    if lower.contains("по подразделу") || squeezed.contains("поподразделу") {
         return Some((TotalKind::Sub, None));
     }
     if lower.contains("по главе") {
@@ -379,22 +665,33 @@ fn totals_kind_text(lower: &str) -> Option<(TotalKind, Option<f64>)> {
     if lower.contains("по главам") {
         return Some((TotalKind::Doc, None)); // итог сводного сметного расчёта
     }
-    if lower.contains("по смете") || lower.contains("по объекту") || lower.contains("по расч") {
+    // «по смете»/«по объекту»/«по расч» — итог ДОКУМЕНТА, но только с
+    // итоговой головой строки: «Итого прямые затраты ПО СМЕТЕ в ценах
+    // 2001г.» — промежуточная сводка (мусорный итог 3,3 млрд в корпусе
+    // был именно отсюда)
+    if head
+        && (lower.contains("по смете")
+            || squeezed.contains("посмете")
+            || lower.contains("по объекту")
+            || squeezed.contains("пообъекту")
+            || lower.contains("по расч")
+            || squeezed.contains("порасч"))
+    {
         return Some((TotalKind::Doc, None));
     }
     if lower.contains("по позиц") || lower.starts_with("справочно") {
         return None;
     }
-    if lower.starts_with("итого") || lower.starts_with("всего") {
+    if head {
         // итог дома/комплектации — итог документа, а не раздела:
         // «Итого дом в комплектации "КОРОБКА"…» (опциональные разделы
         // идут после него и в него не входят)
-        if lower.starts_with("итого дом")
-            || lower.starts_with("всего дом")
-            || lower.contains("дом в комплектации")
-            || lower.starts_with("итого всего")
-            || lower.contains("итого по дому")
-            || lower.contains("всего по дому")
+        if lz.starts_with("итогодом")
+            || lz.starts_with("всегодом")
+            || lz.contains("домвкомплектации")
+            || lz.starts_with("итоговсего")
+            || lz.contains("итогоподому")
+            || lz.contains("всегоподому")
         {
             return Some((TotalKind::Doc, None));
         }
@@ -403,7 +700,7 @@ fn totals_kind_text(lower: &str) -> Option<(TotalKind, Option<f64>)> {
     None
 }
 
-/// Ставка НДС из «(20%)» / «(22 %)».
+/// Ставка НДС из «(20%)» / «(22 %)» либо «НДС 18%» без скобок.
 fn parse_vat_rate(lower: &str) -> Option<f64> {
     let mut from = 0usize;
     while let Some(i) = lower[from..].find('(') {
@@ -416,7 +713,51 @@ fn parse_vat_rate(lower: &str) -> Option<f64> {
         }
         from = start;
     }
+    // без скобок: токен вида «18%»/«18 %»
+    let mut rest = lower;
+    while let Some(i) = rest.find('%') {
+        let head = rest[..i].trim_end();
+        let digits: String = head
+            .chars()
+            .rev()
+            .take_while(|c| c.is_ascii_digit() || *c == ',' || *c == '.')
+            .collect::<Vec<_>>()
+            .into_iter()
+            .rev()
+            .collect();
+        if let Some(v) = parse_number(&digits) {
+            return Some(v / 100.0);
+        }
+        rest = &rest[i + 1..];
+    }
     None
+}
+
+/// Осколок «НДС»: буквенный префикс — обрывок «ндс» из визуальных
+/// двойников (h→н, латинская c→с), а остаток обязан начинаться с цифры
+/// и содержать процент: «h18%», «ндc18%», «н18%» — это «НДС 18%».
+fn vat_label_mangle(squeezed: &str) -> bool {
+    let letters: String = squeezed.chars().take_while(|c| c.is_alphabetic()).collect();
+    if letters.is_empty() {
+        return false;
+    }
+    let rest = &squeezed[letters.len()..];
+    if !rest.starts_with(|c: char| c.is_ascii_digit()) || !rest.contains('%') {
+        return false;
+    }
+    let mapped: Option<String> = letters
+        .chars()
+        // «о» — просечка скана внутри обрывка («ндо C 18%» = «НДС 18%»)
+        .filter(|c| *c != 'о' && *c != 'o')
+        .map(|c| match c {
+            'h' | 'н' => Some('н'),
+            'д' => Some('д'),
+            'с' => Some('с'),
+            'c' => Some('с'), // латинская C — двойник С
+            _ => None,
+        })
+        .collect();
+    matches!(mapped.as_deref(), Some("н") | Some("нд") | Some("ндс") | Some("дс") | Some("нс"))
 }
 
 /// Последнее число в тексте со «мусором»: «Итого по смете 1 234 567,89 руб.»
@@ -598,6 +939,29 @@ fn resource_kind(lower: &str) -> Option<ResourceKind> {
     }
     if lower.contains("материалы") {
         return Some(ResourceKind::Material);
+    }
+    // нечёткий слой: OCR рвёт ключевые слова пробелами и глотает буквы
+    // («с Сметна ая прибыл 1ь» = «Сметная прибыль» — иначе строка итога
+    // становится фантомной позицией). Материалы нечётко НЕ ищем: слово
+    // частое, ложные срабатывания дороже находок
+    let lz = letters_squeezed(lower);
+    if fuzzy_contains(&lz, "накладныерасходы") {
+        return Some(ResourceKind::Overhead);
+    }
+    if fuzzy_contains(&lz, "сметнаяприбыль") {
+        return Some(ResourceKind::Profit);
+    }
+    if fuzzy_contains(&lz, "затратытрударабочих") || fuzzy_contains(&lz, "затратытрудастроителей") {
+        return Some(ResourceKind::Labor);
+    }
+    if fuzzy_contains(&lz, "трудамашинистов") {
+        return Some(ResourceKind::MachineLabor);
+    }
+    if fuzzy_contains(&lz, "эксплуатациямашин") {
+        return Some(ResourceKind::Machine);
+    }
+    if fuzzy_contains(&lz, "транспортныерасходы") {
+        return Some(ResourceKind::Transport);
     }
     None
 }
@@ -975,40 +1339,95 @@ fn section_header(row: &DocRow) -> Option<(Option<String>, String, bool)> {
     // (номер, название, это подраздел)
     let joined = row.joined();
     let trimmed = joined.trim_start();
-    let lower = trimmed.to_lowercase();
-    let is_sub = lower.starts_with("подраздел");
-    let is_sec = (lower.starts_with("раздел") || lower.starts_with("глава")) && !is_sub;
+    let toks: Vec<&str> = trimmed.split_whitespace().collect();
+    if toks.is_empty() {
+        return None;
+    }
+    // 1) маркер начала: строгий («Раздел 1. …») или нечёткий — OCR рвёт
+    //    слово пробелами и глотает буквы: «аздел 1. Земляные…»,
+    //    «Ра аздел 2. Фундамент» (в корпусе из-за этого пропадали ВСЕ
+    //    разделы документа)
+    let lower0 = toks[0].to_lowercase();
+    let strict_sub = lower0.starts_with("подраздел");
+    let strict_sec = (lower0.starts_with("раздел") || lower0.starts_with("глава")) && !strict_sub;
+    let (fuzzy_sub, fuzzy_sec, consumed) = if strict_sub || strict_sec {
+        (false, false, 1usize)
+    } else {
+        fuzzy_section_prefix(&toks)
+    };
+    let is_sub = strict_sub || fuzzy_sub;
+    let is_sec = strict_sec || fuzzy_sec;
     if !is_sec && !is_sub {
         return None;
     }
-    // срезаем слово «Раздел»/«РАЗДЕЛ»/«Подраздел» (любой регистр)
-    let rest: String = trimmed
-        .chars()
-        .skip_while(|c| c.is_alphabetic())
-        .collect::<String>()
-        .trim_start()
-        .to_string();
-    let rest = rest.trim_start_matches("№").trim_start().to_string();
-    let mut number = None;
-    let mut title_rest = rest.clone();
-    let num_end = rest
-        .find(|c: char| !(c.is_ascii_digit() || c == '.'))
-        .unwrap_or(rest.len());
-    if num_end > 0 {
-        let maybe = rest[..num_end].trim_end_matches('.');
-        if !maybe.is_empty() && maybe.chars().all(|c| c.is_ascii_digit() || c == '.') {
-            number = Some(maybe.to_string());
-            title_rest = rest[num_end..]
-                .trim_start_matches(|c: char| matches!(c, '.' | ')' | ':' | ' ' | '-'))
-                .to_string();
+    // 2) токены после маркера: пропускаем «№», точки, дефисы
+    let rest: Vec<&str> = toks[consumed..].to_vec();
+    let mut ri = 0usize;
+    while ri < rest.len() {
+        let t = rest[ri].trim_matches(|c: char| matches!(c, '.' | '-' | '–' | ')'));
+        if t == "№" || t.is_empty() {
+            ri += 1;
+        } else {
+            break;
         }
     }
-    let title = if title_rest.trim().is_empty() {
+    // 3) номер: ведущие цифры с точками («1», «2.1»)
+    let mut number = None;
+    let mut ti = ri;
+    if ti < rest.len() {
+        let t = rest[ti];
+        let digits: String = t
+            .chars()
+            .take_while(|c| c.is_ascii_digit() || *c == '.')
+            .collect();
+        let digits = digits.trim_end_matches('.');
+        if !digits.is_empty() && digits.chars().all(|c| c.is_ascii_digit() || c == '.') {
+            number = Some(digits.to_string());
+            ti += 1;
+        }
+    }
+    // 4) название — остальное, без служебных хвостов
+    let title: Vec<&str> = rest[ti..]
+        .iter()
+        .map(|t| t.trim_matches(|c: char| matches!(c, '.' | ':' | '—')))
+        .filter(|t| !t.is_empty())
+        .collect();
+    let title = if title.is_empty() {
         "(без названия)".to_string()
     } else {
-        title_rest.trim().to_string()
+        title.join(" ")
     };
     Some((number, title, is_sub))
+}
+
+/// Нечёткий маркер «Раздел»/«Подраздел»/«Глава» в начале строки: копим
+/// слова, пока форма `letters_squeezed` не станет похожа на маркер
+/// (расстояние ≤ 1). Возвращает (подраздел?, раздел?, съедено токенов).
+fn fuzzy_section_prefix(toks: &[&str]) -> (bool, bool, usize) {
+    let mut acc = String::new();
+    for (i, t) in toks.iter().take(3).enumerate() {
+        let word: String = t.chars().filter(|c| c.is_alphabetic()).collect();
+        if word.is_empty() {
+            continue;
+        }
+        acc.push_str(&word.to_lowercase());
+        let acc_lz = letters_squeezed(&acc);
+        if acc_lz.len() >= 5 {
+            if edit_distance(&acc_lz, "подраздел") <= 1 {
+                return (true, false, i + 1);
+            }
+            if edit_distance(&acc_lz, "раздел") <= 1 {
+                return (false, true, i + 1);
+            }
+            if edit_distance(&acc_lz, "глава") <= 1 {
+                return (false, true, i + 1);
+            }
+        }
+        if acc_lz.len() > 10 {
+            break; // маркер длиннее не бывает — дальше не копим
+        }
+    }
+    (false, false, 0)
 }
 
 // ---------- шапка документа ----------
@@ -1126,7 +1545,7 @@ fn mark_doc_totals(rows: &[DocRow]) -> Vec<bool> {
         let lower = rows[i].lower();
         let toks: Vec<&str> = lower.split_whitespace().collect();
         let head = toks.first().copied().unwrap_or_default();
-        if head != "итого" && head != "всего" {
+        if head != "итого" && head != "всего" && head != "итоги" {
             continue;
         }
         let rest_numeric = toks[1..]
@@ -1137,12 +1556,19 @@ fn mark_doc_totals(rows: &[DocRow]) -> Vec<bool> {
         }
         for w in rows.iter().skip(i + 1).take(3) {
             let wl = w.lower();
-            if wl.starts_with("ндс") || wl.starts_with("всего с ндс") || wl.contains("по смете") {
+            if let Some((k, _)) = totals_kind_text(&wl) {
+                if matches!(k, TotalKind::Vat | TotalKind::DocWithVat) {
+                    out[i] = true;
+                    break;
+                }
+                if matches!(k, TotalKind::Doc) {
+                    continue; // «Итого с непредвиденными» — не прерывает цепочку
+                }
+                break; // Section/Sub ближе — это не финальная сводка
+            }
+            if wl.contains("по смете") {
                 out[i] = true;
                 break;
-            }
-            if totals_kind_text(&wl).is_some() {
-                break; // другой итог ближе — это не финальная сводка
             }
         }
     }
@@ -1164,6 +1590,9 @@ struct Parser {
     prev_number_cols: Vec<usize>,
     saw_table_row: bool,
     saw_section: bool,
+    /// шапка таблицы уже виделась — до неё строки-«метка | значение»
+    /// (СОГЛАСОВАНО, Сметная стоимость…) — шапка документа, не позиции
+    saw_header_row: bool,
     totals: Totals,
     stats: ValidationStats,
     unparsed: Vec<String>,
@@ -1184,6 +1613,14 @@ struct Parser {
 impl Parser {
     fn feed(&mut self, row: DocRow) {
         dtag(&format!("строка col={}", row.columnar), &row.joined());
+        if std::env::var("RUSTOCR_ESTIMATE_DEBUG").as_deref() == Ok("2") {
+            let cells: Vec<String> = row
+                .cells
+                .iter()
+                .map(|(c, s, t)| format!("[{}+{}]«{}»", c, s, t))
+                .collect();
+            eprintln!("[est:cells] {}", cells.join(" "));
+        }
         if row.columnar {
             self.stats.table_rows += 1;
         }
@@ -1202,6 +1639,12 @@ impl Parser {
         }
         if self.in_notes {
             self.push_unparsed(&joined, row.columnar);
+            return;
+        }
+        // колонтитулы, URL, контакты, логотипы — не содержимое сметы:
+        // не позиции, не итоги и не «неразобранные» строки статистики
+        if is_junk_line(&lower) {
+            dtag("мусор", &joined);
             return;
         }
         if matches!(
@@ -1239,6 +1682,7 @@ impl Parser {
         if joined.trim().is_empty() {
             return;
         }
+        let lower = joined.to_lowercase();
         // раздел может быть и полноширинной строкой
         if let Some((number, title, is_sub)) = section_header(&row) {
             self.start_section(number, title, is_sub);
@@ -1305,6 +1749,58 @@ impl Parser {
                 dtag("раздел-голый", &joined);
                 self.start_section(None, joined.trim().to_string(), false);
                 self.after_total = false;
+                return;
+            }
+            // промежуточные сводки финальных страниц ГС вне сетки — тоже
+            // закрывают позиции: продолжения после них — уже не продолжения
+            if is_intermediate_summary(&lower) {
+                dtag("сводка-промеж", &joined);
+                self.flush_position();
+                self.after_total = true;
+                self.push_unparsed(&joined, false);
+                return;
+            }
+            // НР/СП/«В том числе» — конец позиций: ресурс уровня сметы
+            // («Накладные расходы 13055,93»), а не позиция и не продолжение
+            if self.is_summary_resource_line(&lower) {
+                self.flush_position();
+                self.after_total = true;
+                if let Some(res) = self.parse_resource(&row) {
+                    dtag("ресурс-сводка", &joined);
+                    self.attach_resource(res, &joined);
+                    return;
+                }
+                dtag("сводка-конец", &joined);
+                self.push_unparsed(&joined, false);
+                return;
+            }
+            // перенос названия позиции: полноширинная строка вне сетки со
+            // строчной буквы/скобки — «естественного залегания
+            // корчевателями-…» (в galaktion_lsr таких строк десятки)
+            if !self.after_total
+                && self.cur_position.is_some()
+                && self.is_text_continuation(&joined, &lower)
+            {
+                let page = row.page;
+                if let Some(pos) = self.cur_position.as_mut() {
+                    let has_numbers = joined.chars().any(|c| c.is_ascii_digit());
+                    if !has_numbers {
+                        if !pos.name.starts_with('(') {
+                            pos.name.push(' ');
+                            pos.name.push_str(joined.trim());
+                        }
+                    }
+                    pos.raw.push(joined.clone());
+                    if pos.pages.last() != Some(&page) {
+                        pos.pages.push(page);
+                    }
+                }
+                dtag("продолж-е", &joined);
+                return;
+            }
+            // мета-поля в хвосте документа («Подрядчик:…», «Заказчики:…»)
+            if meta_field(&lower).is_some() {
+                self.feed_meta_line(&joined);
                 return;
             }
         }
@@ -1389,7 +1885,21 @@ impl Parser {
 
         // 2) шапка таблицы → роли колонок
         if is_header_row(&row) {
+            self.saw_header_row = true;
             self.learn_roles(&row);
+            return;
+        }
+
+        // 2а) до шапки таблицы: строки «метка | значение» — шапка ДОКУМЕНТА
+        // (Гранд-Смета: «Сметная стоимость 2010,425 тыс. руб.» лежит в
+        // сетке), а не позиции сметы — иначе вырастает фантомный «раздел»
+        // из шапки и валидация считается от мусорных сумм
+        if !self.saw_header_row
+            && !self.saw_section
+            && meta_keyword_row(&row.lower())
+        {
+            dtag("шапка-док", &joined);
+            self.feed_meta_line(&joined);
             return;
         }
 
@@ -1428,7 +1938,19 @@ impl Parser {
             return;
         }
 
-        // 3б) продолжение позиции: без № и шифра, текст в колонке
+        // 3б) промежуточные сводки финальных страниц Гранд-Сметы
+        // («прямые затраты…», «итого строительные работы», «непредвиденные
+        // затраты 2%») — не позиции: иначе ломают Σ позиций раздела;
+        // ЗАКРЫВАЮТ позиции (после сводки продолжения — не продолжения)
+        if is_intermediate_summary(&row.lower()) {
+            dtag("сводка-промеж", &joined);
+            self.flush_position();
+            self.after_total = true;
+            self.push_unparsed(&joined, true);
+            return;
+        }
+
+        // 3в) продолжение позиции: без № и шифра, текст в колонке
         // наименования начинается со строчной буквы или скобки —
         // «(10 м³ основания) 82,01 3,65 25,55», «траншеях шириной до 2 м…»
         if self.cur_position.is_some() && self.is_position_continuation(&row) {
@@ -1560,9 +2082,79 @@ impl Parser {
             return false;
         }
         match self.name_col {
-            Some(nc) => *col == nc,
+            // продолжение живёт в колонке наименования или ПРАВЕЕ её:
+            // длинное название режется границами колонок на куски, и центр
+            // первого куска попадает в соседнюю полосу («настилы по фермам»)
+            Some(nc) => *col + 1 >= nc,
             None => true,
         }
+    }
+
+    /// Строка-закрыватель позиций финальной сводки: НР/СП/«В том числе».
+    /// С таких строк начинается хвост Гранд-Сметы — позиции после них
+    /// закрыты, а сами они не позиции и не продолжения названий.
+    fn is_summary_resource_line(&self, lower: &str) -> bool {
+        lower.starts_with("накладные")
+            || lower.starts_with("сметная прибыль")
+            || lower.starts_with("в том числе")
+            || lower.starts_with("нр ")
+            || lower.starts_with("нр(")
+            || lower.starts_with("сп ")
+            || lower.starts_with("сп(")
+            || lower.starts_with("фот")
+    }
+
+    /// Полноширинная строка-перенос названия позиции: со строчной буквы
+    /// или скобки, без двоеточий и точки на конце (у приксельных примечаний
+    /// «оплачивается по факту его использования.» точка есть — у переносов
+    /// названий почти никогда), не итог, не ресурс, не мета и не мусор.
+    fn is_text_continuation(&self, joined: &str, lower: &str) -> bool {
+        let t = joined.trim();
+        if t.is_empty() {
+            return false;
+        }
+        let first = t.chars().next().unwrap();
+        if !(first.is_lowercase() || first == '(' || first == '«' || first == '"') {
+            return false;
+        }
+        if t.contains(':') {
+            return false; // «в том числе:», «нормативная трудоемкость: …»
+        }
+        if t.ends_with('.') {
+            return false; // приписки-примечания, а не кусок названия
+        }
+        if t.chars().filter(|c| c.is_alphabetic()).count() < 3 {
+            return false;
+        }
+        if t.chars().count() > 160 {
+            return false;
+        }
+        let lz = letters_squeezed(lower);
+        // итоговые слова — даже разорванные («и тог го вес»)
+        if lz.starts_with("итог") || lz.starts_with("всег") || lz.starts_with("подытог") {
+            return false;
+        }
+        if totals_kind_text(lower).is_some() || totals_kind_text(&lz).is_some() {
+            return false;
+        }
+        if let Some(k) = resource_kind(lower) {
+            if matches!(
+                k,
+                ResourceKind::Overhead | ResourceKind::Profit | ResourceKind::Transport
+            ) {
+                return false;
+            }
+        }
+        if meta_field(lower).is_some() || meta_keyword_row(lower) {
+            return false;
+        }
+        if is_intermediate_summary(lower) {
+            return false;
+        }
+        if is_junk_line(lower) {
+            return false;
+        }
+        true
     }
 
     /// Выбор числа-итога из строки. В выкладках ГС рядом с суммой идут
@@ -1612,21 +2204,30 @@ impl Parser {
         if anchors.is_empty() {
             return fallback;
         }
-        let mut best: Option<(f64, f64)> = None; // (расстояние, значение)
+        if std::env::var("RUSTOCR_ESTIMATE_DEBUG").is_ok() {
+            eprintln!(
+                "[est:total-resolve] kind={:?} якоря={:?} кандидаты={:?}",
+                kind, anchors, candidates
+            );
+        }
+        let mut best: Option<(f64, f64, f64)> = None; // (расстояние, значение, якорь)
         for &c in &candidates {
             for &a in &anchors {
                 let d = (c - a).abs();
-                if best.map(|(bd, _)| d < bd).unwrap_or(true) {
-                    best = Some((d, c));
+                if best.map(|(bd, _, _)| d < bd).unwrap_or(true) {
+                    best = Some((d, c, a));
                 }
             }
         }
-        // ни один кандидат не похож на Σ (мусор от скана) — прежний путь
+        // ни один кандидат не похож на СВОЙ якорь (мусор от скана) — прежний
+        // путь. Порог меряем от якоря пары: иначе крупный якорь Σ+НДС
+        // «легализует» мусорный кандидат, ближайший к малому якорю Σ
+        // (сантехприборы: кандидат 126 при Σ=1920,74 и Σ+НДС=7888,74)
         let fits = best
-            .map(|(d, _)| anchors.iter().any(|a| d <= 0.35 * a.max(1.0)))
+            .map(|(d, _, a)| d <= 0.5 * a.max(1.0))
             .unwrap_or(false);
         if fits {
-            best.map(|(_, v)| v)
+            best.map(|(_, v, _)| v)
         } else {
             fallback
         }
@@ -1735,17 +2336,24 @@ impl Parser {
             // (и журнал расходов: дата | поставщик | сумма | комментарий)
             (None, None) if resource_kind(&row.lower()).is_none() => {
                 let last_num_col = row.numbers().last().map(|(c, _, _)| *c);
-                let has_code = row.cells.iter().any(|(col, _, t)| {
+                let has_code = row.cells.iter().enumerate().any(|(i, (col, _, t))| {
                     resource_code(t).is_some()
-                        && !(t.trim().len() == 6 && Some(*col) == last_num_col)
+                        && !(is_six_digit(t)
+                            && (Some(*col) == last_num_col || !is_first_nonempty(row, i)))
                 });
                 if has_code {
                     false
                 } else {
+                    // первая ТЕКСТОВАЯ ячейка строки — не обязательно первая
+                    // непустая: в объектных сметных расчётах шифр («101-01-01»)
+                    // стоит отдельной ячейкой перед наименованием
                     let first = row
                         .cells
                         .iter()
-                        .find(|(_, _, t)| !t.trim().is_empty())
+                        .find(|(_, _, t)| {
+                            let t = t.trim();
+                            t.chars().filter(|c| c.is_alphabetic()).count() >= 3 || is_date(t)
+                        })
                         .map(|(_, _, t)| t.trim())
                         .unwrap_or("");
                     // дата в первой ячейке — журнал расходов: строка всё равно
@@ -2055,14 +2663,19 @@ impl Parser {
         }
 
         // код ресурса в ячейке: 6-значный «код машины» не должен быть
-        // последним числом строки — иначе это сумма («… 110000 арматура»)
+        // последним числом строки — иначе это сумма («… 110000 арматура»);
+        // и вообще код машины стоит ПЕРВОЙ непустой ячейкой строки
+        // («060148 Кран…»), а цена — правее наименования («Работа
+        // автокрана смена 320000 1,5 48 000»: 320000 — цена, не код)
         let last_num_col = row.numbers().last().map(|(c, _, _)| *c);
         let mut code_col: Option<usize> = None;
         let mut code: Option<String> = None;
-        for (col, _, text) in &row.cells {
+        for (i, (col, _, text)) in row.cells.iter().enumerate() {
             if resource_code(text).is_some() {
-                if text.trim().len() == 6 && Some(*col) == last_num_col {
-                    continue; // чистые 6 цифр в последней числовой ячейке — сумма
+                if is_six_digit(text)
+                    && (Some(*col) == last_num_col || !is_first_nonempty(row, i))
+                {
+                    continue; // чистые 6 цифр не в начале строки — цена/сумма
                 }
                 code = resource_code(text);
                 code_col = Some(*col);
@@ -2165,8 +2778,9 @@ impl Parser {
         ) {
             return true;
         }
-        // продолжение названия позиции/ресурса (в колонке наименования)
-        let name_col_ok = self.name_col.map(|nc| nc == *col).unwrap_or(true);
+        // продолжение названия позиции/ресурса (в колонке наименования
+        // или правее — длинные блоки режутся границами)
+        let name_col_ok = self.name_col.map(|nc| nc <= *col + 1).unwrap_or(true);
         let letters = text.trim().chars().filter(|c| c.is_alphabetic()).count();
         let is_pure_number = parse_number(text.trim()).is_some();
         if name_col_ok && !is_pure_number && letters >= 2 {
@@ -2223,6 +2837,10 @@ impl Parser {
     fn start_section(&mut self, number: Option<String>, title: String, is_sub: bool) {
         self.saw_section = true;
         self.name_col = None;
+        // заголовок раздела — новое начало: «голый» заголовок сразу после
+        // него (подраздел Гранд-Сметы «ремонт малой сцены») не должен
+        // приниматься за следующий раздел по правилу «после итога»
+        self.after_total = false;
         self.flush_position();
         if is_sub {
             self.flush_sub();
@@ -2424,6 +3042,154 @@ mod tests {
             columnar,
             cells: cells.iter().map(|(t, c)| (*c, 1, t.to_string())).collect(),
         }
+    }
+
+    #[test]
+    fn fuzzy_matching_of_torn_keywords() {
+        // OCR рвёт ключевые слова пробелами и глотает буквы
+        let lz = |s: &str| letters_squeezed(&s.to_lowercase());
+        assert!(fuzzy_contains(&lz("с Сметна ая прибыл 1ь"), "сметнаяприбыль"));
+        assert!(fuzzy_contains(&lz("прям мые затра ты"), "прямыезатраты"));
+        assert!(fuzzy_contains(&lz("наклад ные расходы"), "накладныерасходы"));
+        // обычные слова не должны случайно совпадать
+        assert!(!fuzzy_contains(&lz("гидроизоляция фундамента боковая"), "сметнаяприбыль"));
+        assert!(!fuzzy_contains(&lz("кладка стен из кирпича"), "накладныерасходы"));
+        assert!(!fuzzy_contains(&lz("устройство кровли из металлочерепицы"), "прямыезатраты"));
+        // разорванное «по смете» схлопывается
+        assert!(despace_fold("и по с смете").contains("поссмете"));
+    }
+
+    #[test]
+    fn junk_lines_filtered() {
+        assert!(is_junk_line("htt p://www.smet ta-mosc ow.ru/ c траница 1"));
+        assert!(is_junk_line("Гра нд-CMET A"));
+        assert!(is_junk_line("г.Москва а, Электролитный проезд 3 стр.28. Тел.: +7 (495) 64-614-64"));
+        assert!(is_junk_line("версия 6.2.7 20221031"));
+        assert!(is_junk_line("e-mail: zhitnik@vfstroy.ru"));
+        // содержимое сметы мусором НЕ считается
+        assert!(!is_junk_line("кладка стен из кирпича м2 1200"));
+        assert!(!is_junk_line("итого по разделу 1 6 172,50"));
+        assert!(!is_junk_line("устройство кровли из профилированной металлочерепицы"));
+    }
+
+    #[test]
+    fn mangled_section_headers_recognized() {
+        // «аздел 1. Землянные работы» — OCR глотнул «Р»
+        let r = row(&[("аздел 1. Землян ные работы", 0)], false);
+        assert_eq!(
+            section_header(&r),
+            Some((Some("1".to_string()), "Землян ные работы".to_string(), false))
+        );
+        // «Ра аздел 2. Фундамент» — лишний пробел внутри слова
+        let r = row(&[("Ра", 1), ("аздел 2. Фундам мент", 2), ("Перекр ытие", 3)], true);
+        assert_eq!(
+            section_header(&r),
+            Some((Some("2".to_string()), "Фундам мент Перекр ытие".to_string(), false))
+        );
+        // строгий путь не сломался
+        let r = row(&[("Раздел 1. Земляные работы", 0)], false);
+        assert_eq!(
+            section_header(&r),
+            Some((Some("1".to_string()), "Земляные работы".to_string(), false))
+        );
+        // подраздел
+        let r = row(&[("Подраздел 2.1 Кладка", 0)], false);
+        let (n, _, is_sub) = section_header(&r).unwrap();
+        assert_eq!((n.as_deref(), is_sub), (Some("2.1"), true));
+        // позиция с «раздел...»-подобным словом — НЕ раздел
+        let r = row(&[("Кладка перегородок из пазогребневых плит", 0)], false);
+        assert_eq!(section_header(&r), None);
+    }
+
+    #[test]
+    fn summary_tails_not_totals_or_positions() {
+        // «Итого прямые затраты ПО СМЕТЕ в ценах 2001г.» — промежуточная
+        // сводка, а не итог документа (был мусорный итог 3,3 млрд)
+        assert!(is_intermediate_summary(
+            "ітог о прям мые затра ты по смете в цен ах 2001г. 180347.4"
+        ));
+        assert_eq!(totals_kind_text("ітог о прям мые затра ты по смете в цен ах 2001г."), None);
+        // «Итоги» (мн.ч.) — итог документа
+        assert!(matches!(totals_kind_text("итоги по смете:"), Some((TotalKind::Doc, _))));
+        // замусоленная «Сметная прибыль» — ресурс, а не фантомная позиция
+        assert_eq!(resource_kind("с сметна ая прибыл 1ь"), Some(ResourceKind::Profit));
+        assert_eq!(
+            resource_kind("наклад ные расходы"),
+            Some(ResourceKind::Overhead)
+        );
+        // обычные «по смете» с итоговой головой — по-прежнему итог документа
+        assert!(matches!(totals_kind_text("всего по смете 1544414.6"), Some((TotalKind::Doc, _))));
+    }
+
+    #[test]
+    fn fullwidth_continuation_line() {
+        // перенос названия позиции: строчная буква, без двоеточий/точки
+        let p = Parser::default();
+        assert!(p.is_text_continuation("естественног о залегания корчевателями л-", "естественног о залегания корчевателями л-"));
+        assert!(p.is_text_continuation("кустарник и м иелколесье средние", "кустарник и м иелколесье средние"));
+        // приписки и служебные строки — НЕ продолжения
+        assert!(!p.is_text_continuation("в том числе:", "в том числе:"));
+        assert!(!p.is_text_continuation("оплачивается по факту его использования.", "оплачивается по факту его использования."));
+        assert!(!p.is_text_continuation("н орм мативная т руд оемкость: 238 35.00 ч.-час.", "н орм мативная т руд оемкость: 238 35.00 ч.-час."));
+        assert!(!p.is_text_continuation("накладные расходы 13055.93", "накладные расходы 13055.93"));
+        assert!(!p.is_text_continuation("Земляные работы, выполняемые вручную", "земляные работы, выполняемые вручную"));
+    }
+
+    #[test]
+    fn latin_lookalikes_folded_for_matching() {
+        // «Bcero» (латинские B и r) читается как «Всего» — только для
+        // матчинга ключевых слов, исходный текст не меняется
+        assert_eq!(fold_latin_lookalikes("bcero"), "всего");
+        assert_eq!(fold_latin_lookalikes("cмeтe"), "смете");
+        assert_eq!(role_of_header("Bcero"), Some(Role::Total));
+        assert_eq!(role_of_header("Bcero ("), Some(Role::Total));
+        assert_eq!(role_of_header("Koл."), Some(Role::Qty));
+    }
+
+    #[test]
+    fn vat_mangle_fragments() {
+        // осколки OCR от «НДС 18%»
+        assert!(vat_label_mangle("h18%"));
+        assert!(vat_label_mangle("ндc18%"));
+        assert!(vat_label_mangle("ндоc18%")); // «ндо C 18%» с просечкой
+        assert!(vat_label_mangle("н18%"));
+        assert!(!vat_label_mangle("ндс"));
+        assert!(!vat_label_mangle("итог18"));
+        // в контексте итогов (текст приходит нижним регистром, как из row.lower())
+        assert!(matches!(
+            totals_kind_text("нд c 18% 306674,94"),
+            Some((TotalKind::Vat, _))
+        ));
+        assert!(matches!(
+            totals_kind_text("итого с непредвиденными 1703749,65"),
+            Some((TotalKind::Doc, _))
+        ));
+        assert_eq!(parse_vat_rate("ндс 18%"), Some(0.18));
+        assert_eq!(parse_vat_rate("ндс (20%)"), Some(0.2));
+    }
+
+    #[test]
+    fn resource_codes_with_ocr_junk() {
+        // код с маркером-мусором и разорванной точкой
+        assert_eq!(resource_code("Уд 1.102-0008"), Some("1.102-0008".to_string()));
+        assert_eq!(resource_code("ya 2.102-0049"), Some("2.102-0049".to_string()));
+        assert_eq!(resource_code("3 102-0061"), Some("3.102-0061".to_string()));
+        // шестизначные числа ВНУТРИ текста — цены, не коды машин
+        assert_eq!(resource_code("Работа автокрана смена 320000 1,5 48 000"), None);
+        // код машины — чистая ячейка из 6 цифр
+        assert_eq!(resource_code("060148"), Some("060148".to_string()));
+        assert_eq!(resource_code("101-0797"), Some("101-0797".to_string()));
+    }
+
+    #[test]
+    fn intermediate_summaries_not_positions() {
+        assert!(is_intermediate_summary(
+            "итого прямые затраты по смете в ценах 2001г. 196082,29"
+        ));
+        assert!(is_intermediate_summary("непредвиденные затраты 2% 33406,86"));
+        assert!(is_intermediate_summary("итого строительные работы 1645550,13"));
+        assert!(!is_intermediate_summary("итого по разделу 1 500,00"));
+        assert!(!is_intermediate_summary("кладка стен"));
     }
 
     #[test]

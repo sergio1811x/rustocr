@@ -1,57 +1,61 @@
 {
  "pages": 3,
- "sections": 3,
- "positions": 100,
- "resources": 1,
+ "sections": 8,
+ "positions": 152,
+ "resources": 0,
  "table_rows": 167,
- "unclassified_rows": 115,
- "qty_price_checked": 23,
- "section_totals_checked": 1,
- "total": 825826.0,
+ "unclassified_rows": 6,
+ "qty_price_checked": 0,
+ "section_totals_checked": 6,
+ "total": 10975506.0,
  "vat": null,
  "total_with_vat": null,
  "errors": [
+  "doc_total_mismatch",
   "section_total_mismatch"
  ],
  "warnings": [
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
+  "section_total_missing",
   "unclassified_rows"
  ],
  "sections_detail": [
   {
-   "title": "строительство",
-   "positions": 100,
-   "total": 825826.0
-  },
-  {
-   "title": "с ТРОИМ",
-   "positions": 0,
+   "title": "(без разделов)",
+   "positions": 6,
    "total": null
   },
   {
-   "title": "строительного мусора",
+   "title": "Строительство фундамента",
+   "positions": 37,
+   "total": 2962483.0
+  },
+  {
+   "title": "Строительство 1го этажа",
+   "positions": 23,
+   "total": 1542502.0
+  },
+  {
+   "title": "Строительство перекрытия 1го этажа",
+   "positions": 23,
+   "total": 1429983.0
+  },
+  {
+   "title": "Строительство 2го этажа",
+   "positions": 25,
+   "total": 1630007.0
+  },
+  {
+   "title": "Монтаж стропильной системы",
+   "positions": 12,
+   "total": 1737930.0
+  },
+  {
+   "title": "Монтаж кровли",
+   "positions": 26,
+   "total": 825826.0
+  },
+  {
+   "title": "Оплата строительства дома производится поэтапно",
    "positions": 0,
    "total": null
   }

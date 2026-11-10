@@ -1,11 +1,11 @@
 {
  "pages": 2,
  "sections": 2,
- "positions": 11,
+ "positions": 10,
  "resources": 0,
  "table_rows": 20,
- "unclassified_rows": 26,
- "qty_price_checked": 5,
+ "unclassified_rows": 5,
+ "qty_price_checked": 6,
  "section_totals_checked": 2,
  "total": null,
  "vat": null,
@@ -21,17 +21,18 @@
   "qty_price_mismatch",
   "qty_price_mismatch",
   "qty_price_mismatch",
+  "qty_price_mismatch",
   "unclassified_rows"
  ],
  "sections_detail": [
   {
-   "title": "(без разделов)",
+   "title": "Гранд-СМЕТ А",
    "positions": 7,
-   "total": 321402374.07
+   "total": 32069.48
   },
   {
-   "title": "расчеты\"",
-   "positions": 4,
+   "title": "B ре менные зда ания и сооружения",
+   "positions": 3,
    "total": 74.07
   }
  ]

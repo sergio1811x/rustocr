@@ -1,31 +1,28 @@
 {
  "pages": 2,
  "sections": 1,
- "positions": 6,
+ "positions": 13,
  "resources": 2,
  "table_rows": 35,
- "unclassified_rows": 42,
- "qty_price_checked": 4,
- "section_totals_checked": 1,
- "total": 2940.0,
- "vat": null,
+ "unclassified_rows": 13,
+ "qty_price_checked": 0,
+ "section_totals_checked": 0,
+ "total": 121190.59,
+ "vat": 18486.7,
  "total_with_vat": null,
  "errors": [
-  "section_total_mismatch"
+  "doc_total_mismatch"
  ],
  "warnings": [
   "auto_repair",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
+  "section_total_missing",
   "unclassified_rows"
  ],
  "sections_detail": [
   {
-   "title": "Режимно-наладочные испытания",
-   "positions": 6,
-   "total": 2940.0
+   "title": "(без разделов)",
+   "positions": 13,
+   "total": null
   }
  ]
 }

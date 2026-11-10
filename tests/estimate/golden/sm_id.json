@@ -1,11 +1,11 @@
 {
  "pages": 13,
  "sections": 11,
- "positions": 131,
- "resources": 20,
+ "positions": 146,
+ "resources": 3,
  "table_rows": 241,
- "unclassified_rows": 301,
- "qty_price_checked": 57,
+ "unclassified_rows": 65,
+ "qty_price_checked": 32,
  "section_totals_checked": 9,
  "total": 3074.95,
  "vat": null,
@@ -24,36 +24,6 @@
  ],
  "warnings": [
   "auto_repair",
-  "auto_repair",
-  "auto_repair",
-  "auto_repair",
-  "auto_repair",
-  "auto_repair",
-  "auto_repair",
-  "auto_repair",
-  "auto_repair",
-  "auto_repair",
-  "auto_repair",
-  "auto_repair",
-  "auto_repair",
-  "auto_repair",
-  "auto_repair",
-  "auto_repair",
-  "auto_repair",
-  "auto_repair",
-  "auto_repair",
-  "auto_repair",
-  "auto_repair",
-  "auto_repair",
-  "position_no_name",
-  "position_no_name",
-  "position_no_name",
-  "position_no_name",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
   "qty_price_mismatch",
   "qty_price_mismatch",
   "qty_price_mismatch",
@@ -70,52 +40,28 @@
   "qty_price_mismatch",
   "qty_price_mismatch",
   "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
+  "section_total_missing",
   "unclassified_rows"
  ],
  "sections_detail": [
   {
+   "title": "(без разделов)",
+   "positions": 3,
+   "total": null
+  },
+  {
    "title": "ФУНДАМЕНТЫ",
-   "positions": 14,
+   "positions": 13,
    "total": 294.66
   },
   {
    "title": "СТЕНЫ",
-   "positions": 20,
-   "total": 86120.0
+   "positions": 21,
+   "total": 771.47
   },
   {
    "title": "Перегородки",
-   "positions": 3,
+   "positions": 4,
    "total": 308.62
   },
   {
@@ -125,32 +71,27 @@
   },
   {
    "title": "Покрытие.кровля",
-   "positions": 22,
-   "total": 105066.0
+   "positions": 23,
+   "total": 994.44
   },
   {
    "title": "ОКНА",
    "positions": 7,
-   "total": 2976.0
+   "total": 53.81
   },
   {
    "title": "БАЛКОННЫЕ ПЛАСТИКОВЫЕ",
-   "positions": 13,
+   "positions": 15,
    "total": 63.84
   },
   {
    "title": "Полы",
-   "positions": 11,
+   "positions": 12,
    "total": 64.64
   },
   {
-   "title": "ВНУТРЕННЯЯ ОТДЕЛКА",
-   "positions": 0,
-   "total": null
-  },
-  {
-   "title": "потолки",
-   "positions": 21,
+   "title": "ВНУТРЕННЯЯ ОТД ЕЛКА",
+   "positions": 28,
    "total": 3092.94
   },
   {

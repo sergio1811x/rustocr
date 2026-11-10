@@ -1,11 +1,11 @@
 {
  "pages": 2,
  "sections": 1,
- "positions": 19,
+ "positions": 21,
  "resources": 2,
  "table_rows": 49,
- "unclassified_rows": 31,
- "qty_price_checked": 1,
+ "unclassified_rows": 4,
+ "qty_price_checked": 2,
  "section_totals_checked": 1,
  "total": 1721671.0,
  "vat": null,
@@ -16,13 +16,12 @@
  ],
  "warnings": [
   "position_no_name",
-  "qty_price_mismatch",
   "unclassified_rows"
  ],
  "sections_detail": [
   {
    "title": "прямых затрат в базовом pyá",
-   "positions": 19,
+   "positions": 21,
    "total": 1457105.0
   }
  ]

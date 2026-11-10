@@ -1,51 +1,23 @@
 {
  "pages": 12,
- "sections": 4,
- "positions": 123,
+ "sections": 1,
+ "positions": 134,
  "resources": 19,
  "table_rows": 221,
- "unclassified_rows": 298,
- "qty_price_checked": 8,
- "section_totals_checked": 3,
- "total": 9569707.87,
+ "unclassified_rows": 14,
+ "qty_price_checked": 63,
+ "section_totals_checked": 1,
+ "total": 87.0,
  "vat": null,
  "total_with_vat": null,
  "errors": [
   "doc_total_mismatch",
-  "section_total_mismatch",
-  "section_total_mismatch",
   "section_total_mismatch"
  ],
  "warnings": [
   "position_duplicate",
   "position_missing",
   "position_no_name",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
   "qty_price_mismatch",
   "qty_price_mismatch",
   "qty_price_mismatch",
@@ -54,24 +26,9 @@
  ],
  "sections_detail": [
   {
-   "title": "Сметный Калькулятор",
-   "positions": 0,
-   "total": null
-  },
-  {
-   "title": "Земляные работы",
-   "positions": 47,
-   "total": 6569322.0
-  },
-  {
-   "title": "Сметный Калькулятор",
-   "positions": 42,
-   "total": 409842.29
-  },
-  {
-   "title": "п 5 Канализация К2, К12",
-   "positions": 34,
-   "total": 8109921.92
+   "title": "Сме тный Калькулятор",
+   "positions": 134,
+   "total": 92.0
   }
  ]
 }

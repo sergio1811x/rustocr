@@ -1,73 +1,48 @@
 {
  "pages": 5,
- "sections": 4,
- "positions": 50,
- "resources": 6,
+ "sections": 3,
+ "positions": 71,
+ "resources": 5,
  "table_rows": 109,
- "unclassified_rows": 115,
- "qty_price_checked": 7,
+ "unclassified_rows": 23,
+ "qty_price_checked": 18,
  "section_totals_checked": 1,
  "total": 123867.12,
- "vat": null,
+ "vat": 7445.66,
  "total_with_vat": null,
  "errors": [
   "doc_total_mismatch",
   "section_total_mismatch"
  ],
  "warnings": [
+  "position_duplicate",
+  "position_missing",
   "position_no_name",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
+  "position_no_name",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
   "qty_price_mismatch",
   "qty_price_mismatch",
   "qty_price_mismatch",
   "section_total_missing",
-  "section_total_missing",
-  "unclassified_rows"
+  "unclassified_rows",
+  "vat_mismatch"
  ],
  "sections_detail": [
   {
+   "title": "Гранд-СМЕТA а",
+   "positions": 1,
+   "total": null
+  },
+  {
    "title": "Ограждение длиной 244 м.п. 97 пролетов 4 5 6 7 8 9 10 11",
-   "positions": 44,
-   "total": null
-  },
-  {
-   "title": "Погрузка и перевозка мусора",
-   "positions": 2,
-   "total": null
-  },
-  {
-   "title": "Итого Строительные работы",
-   "positions": 4,
+   "positions": 70,
    "total": 873.77
   },
   {
-   "title": "А.Г. Окладникова",
+   "title": "А.Г. Окладн никова",
    "positions": 0,
    "total": null
   }

@@ -1,0 +1,51 @@
+{
+ "pages": 7,
+ "sections": 5,
+ "positions": 51,
+ "resources": 10,
+ "table_rows": 148,
+ "unclassified_rows": 65,
+ "qty_price_checked": 23,
+ "section_totals_checked": 5,
+ "total": 2010424.59,
+ "vat": 306674.94,
+ "total_with_vat": null,
+ "errors": [
+  "doc_total_mismatch",
+  "section_total_mismatch",
+  "section_total_mismatch",
+  "section_total_mismatch",
+  "section_total_mismatch",
+  "section_total_mismatch"
+ ],
+ "warnings": [
+  "unclassified_rows"
+ ],
+ "sections_detail": [
+  {
+   "title": "ремонт трибун",
+   "positions": 18,
+   "total": 1263525.43
+  },
+  {
+   "title": "ремонт сцены",
+   "positions": 6,
+   "total": 39527.62
+  },
+  {
+   "title": "освещение",
+   "positions": 9,
+   "total": 146160.32
+  },
+  {
+   "title": "вывоз мусора",
+   "positions": 2,
+   "total": 44271.59
+  },
+  {
+   "title": "ремонт ограждения парапета набережно й",
+   "positions": 16,
+   "total": 1670342.8
+  }
+ ]
+}

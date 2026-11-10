@@ -73,7 +73,8 @@ def run_doc(pdf: Path) -> dict:
 def main() -> int:
     pdfs = sorted(REAL.glob("*.pdf"))
     if ONLY:
-        pdfs = [p for p in pdfs if ONLY in p.name]
+        keys = [k.strip() for k in ONLY.split(",")]
+        pdfs = [p for p in pdfs if any(k in p.name for k in keys)]
     if not pdfs:
         print("нет PDF в", REAL)
         return 2

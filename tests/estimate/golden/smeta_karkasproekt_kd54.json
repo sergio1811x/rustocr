@@ -1,10 +1,10 @@
 {
  "pages": 1,
  "sections": 1,
- "positions": 22,
+ "positions": 26,
  "resources": 1,
  "table_rows": 36,
- "unclassified_rows": 19,
+ "unclassified_rows": 6,
  "qty_price_checked": 0,
  "section_totals_checked": 1,
  "total": 894742.0,
@@ -14,30 +14,12 @@
   "section_total_mismatch"
  ],
  "warnings": [
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
   "unclassified_rows"
  ],
  "sections_detail": [
   {
-   "title": "Стоимость Итого,",
-   "positions": 22,
+   "title": "СT Оимость Итого,",
+   "positions": 26,
    "total": 894742.0
   }
  ]

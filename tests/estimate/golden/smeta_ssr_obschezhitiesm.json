@@ -1,12 +1,12 @@
 {
  "pages": 3,
- "sections": 11,
+ "sections": 6,
  "positions": 19,
  "resources": 0,
  "table_rows": 44,
- "unclassified_rows": 25,
- "qty_price_checked": 2,
- "section_totals_checked": 8,
+ "unclassified_rows": 6,
+ "qty_price_checked": 3,
+ "section_totals_checked": 6,
  "total": 10076.54,
  "vat": null,
  "total_with_vat": null,
@@ -17,45 +17,20 @@
   "section_total_mismatch"
  ],
  "warnings": [
+  "position_no_name",
   "qty_price_mismatch",
   "qty_price_mismatch",
-  "section_total_missing",
   "unclassified_rows"
  ],
  "sections_detail": [
   {
    "title": "(без разделов)",
-   "positions": 2,
-   "total": null
-  },
-  {
-   "title": "Подготовка территории строительства",
-   "positions": 1,
-   "total": 0.0
-  },
-  {
-   "title": "Основные объекты строительства",
-   "positions": 1,
-   "total": 6812.68
-  },
-  {
-   "title": "Объекты энергетического хозяйства",
-   "positions": 1,
-   "total": 383.86
-  },
-  {
-   "title": "Объекты транспортного хозяйства и связи",
-   "positions": 1,
-   "total": 130.08
-  },
-  {
-   "title": "Наружные сети и сооружения водоснабжения, канализации, тепло",
-   "positions": 2,
+   "positions": 8,
    "total": 152.31
   },
   {
    "title": "Благоустройство и оз зеленение территории",
-   "positions": 0,
+   "positions": 1,
    "total": 881.79
   },
   {
@@ -75,7 +50,7 @@
   },
   {
    "title": "Проектные и изыск ательские работы",
-   "positions": 4,
+   "positions": 3,
    "total": 47006.03
   }
  ]

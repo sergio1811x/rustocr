@@ -83,28 +83,29 @@ fn text_rows(page: usize, result: &OcrResult) -> Vec<semantics::DocRow> {
         .collect()
 }
 
-/// Общие границы колонок документа: кластеризация собственных границ
-/// всех страниц (допуск 15 px). Страницы одного документа рендерятся в
-/// одном масштабе, и колонки таблицы стоят на одних X — раскладывая все
-/// страницы в ЕДИНОМ наборе границ, получаем совпадающие индексы
-/// колонок: роли шапки, выученные на первой странице, работают на
-/// остальных (иначе страницы со «слепыми» участками теряют числа).
-fn global_boundaries(pages: &[PageInput]) -> Vec<f32> {
-    let mut edges: Vec<f32> = Vec::new();
-    for p in pages {
-        if let Some(skel) = structure::page_skeleton(p.img, p.result) {
-            edges.extend(skel.boundaries.iter().copied());
-        }
-    }
+/// Собственные границы колонок каждой страницы (первый проход скелета).
+fn own_edges(pages: &[PageInput]) -> Vec<Vec<f32>> {
+    pages
+        .iter()
+        .map(|p| {
+            structure::page_skeleton(p.img, p.result)
+                .map(|s| s.boundaries)
+                .unwrap_or_default()
+        })
+        .collect()
+}
+
+/// Кластеризация отсортированных границ с допуском 15 px → средние.
+fn cluster_edges(mut edges: Vec<f32>) -> Vec<f32> {
     edges.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-    let mut global: Vec<f32> = Vec::new();
+    let mut out: Vec<f32> = Vec::new();
     let mut cluster: Vec<f32> = Vec::new();
     for e in edges {
         match cluster.last() {
             Some(&last) if e - last <= 15.0 => cluster.push(e),
             _ => {
                 if !cluster.is_empty() {
-                    global.push(cluster.iter().sum::<f32>() / cluster.len() as f32);
+                    out.push(cluster.iter().sum::<f32>() / cluster.len() as f32);
                 }
                 cluster.clear();
                 cluster.push(e);
@@ -112,20 +113,107 @@ fn global_boundaries(pages: &[PageInput]) -> Vec<f32> {
         }
     }
     if !cluster.is_empty() {
-        global.push(cluster.iter().sum::<f32>() / cluster.len() as f32);
+        out.push(cluster.iter().sum::<f32>() / cluster.len() as f32);
     }
-    global
+    out
+}
+
+/// Похожесть двух наборов границ: доля границ МЕНЬШЕГО набора, нашедших
+/// пару в большом с допуском 15 px (0..1).
+fn edge_affinity(a: &[f32], b: &[f32]) -> f32 {
+    if a.is_empty() || b.is_empty() {
+        return 0.0;
+    }
+    let (small, big) = if a.len() <= b.len() { (a, b) } else { (b, a) };
+    let matched = small
+        .iter()
+        .filter(|&&x| big.iter().any(|&y| (x - y).abs() <= 15.0))
+        .count();
+    matched as f32 / small.len() as f32
+}
+
+/// Границы колонок ПО СЕМЕЙСТВАМ страниц.
+///
+/// Склейка границ ВСЕГО документа («средняя температура») ломается на
+/// Гранд-Сметах: после страниц позиций идут итоговые страницы со СВОИМИ
+/// колонками (НР/СП/НДС, выкладки ресурсов) — их границы попадают в общий
+/// набор и РЕЖУТ колонку наименований страниц позиций (перечитанные
+/// куски дают «Сметная сто | имос ть 2 010,425»). Поэтому страницы
+/// кластеризуются в семейства похожих наборов границ (совпадение ≥60%
+/// меньшего набора): роли шапки, выученные на первой странице, действуют
+/// на страницах её семейства, а страницы с другой таблицей раскладываются
+/// по собственным границам. «Слепые» страницы (собственных границ <2 —
+/// шапка затянула профиль просветов) примыкают к крупнейшему семейству.
+fn family_boundaries(pages: &[PageInput]) -> Vec<Vec<f32>> {
+    let own = own_edges(pages);
+    let n = pages.len();
+
+    // 1) жадная кластеризация: страница примыкает к первому семейству,
+    //    с которым совпадает её собственный набор (или набор члена)
+    let mut families: Vec<Vec<usize>> = Vec::new(); // индексы страниц
+    for i in 0..n {
+        let mut target: Option<usize> = None;
+        for (fi, members) in families.iter().enumerate() {
+            let ok = members
+                .iter()
+                .any(|&m| edge_affinity(&own[i], &own[m]) >= 0.6);
+            if ok {
+                target = Some(fi);
+                break;
+            }
+        }
+        match target {
+            Some(fi) => families[fi].push(i),
+            None => families.push(vec![i]),
+        }
+    }
+
+    // 2) «слепые» страницы (<2 границ) примыкают к крупнейшему семейству
+    if !families.is_empty() {
+        let largest = (0..families.len())
+            .max_by_key(|&fi| families[fi].len())
+            .unwrap();
+        for i in 0..n {
+            if own[i].len() < 2 {
+                // не в одиночном семействе — переносим
+                let fi = families.iter().position(|m| m.contains(&i)).unwrap();
+                if fi != largest && families[fi].len() == 1 {
+                    families[fi].retain(|&m| m != i);
+                    families[largest].push(i);
+                }
+            }
+        }
+        families.retain(|m| !m.is_empty());
+    }
+
+    // 3) границы каждого семейства — кластер объединения границ членов
+    let mut result: Vec<Vec<f32>> = vec![Vec::new(); n];
+    for members in &families {
+        let edges: Vec<f32> = members
+            .iter()
+            .flat_map(|&m| own[m].iter().copied())
+            .collect();
+        let fam = cluster_edges(edges);
+        for &m in members {
+            result[m] = fam.clone();
+        }
+    }
+    result
 }
 
 /// Полный конвейер по страницам (CLI: картинки уже в памяти).
 pub fn parse_estimate(engine: Option<&OcrEngine>, pages: &[PageInput]) -> EstimateDocument {
-    // общие границы колонок: скелеты страниц проходятся дважды — дёшево
-    // (геометрия и профиль просветов, без раскладки и перечтения)
-    let global = global_boundaries(pages);
+    // границы колонок по семействам страниц: скелеты проходят дважды —
+    // дёшево (геометрия и профиль просветов, без раскладки и перечтения)
+    let fam = family_boundaries(pages);
     let mut rows: Vec<semantics::DocRow> = Vec::new();
-    for p in pages {
+    for (i, p) in pages.iter().enumerate() {
+        let edges: &[f32] = fam
+            .get(i)
+            .map(|v| v.as_slice())
+            .unwrap_or_default();
         let table = structure::page_skeleton(p.img, p.result)
-            .and_then(|skel| structure::layout_page(skel, engine, p.img, &global));
+            .and_then(|skel| structure::layout_page(skel, engine, p.img, edges));
         match table {
             Some(t) => rows.extend(
                 t.rows

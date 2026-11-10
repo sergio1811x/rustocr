@@ -1,11 +1,11 @@
 {
  "pages": 11,
  "sections": 2,
- "positions": 105,
- "resources": 8,
+ "positions": 121,
+ "resources": 2,
  "table_rows": 323,
- "unclassified_rows": 300,
- "qty_price_checked": 9,
+ "unclassified_rows": 173,
+ "qty_price_checked": 38,
  "section_totals_checked": 2,
  "total": null,
  "vat": null,
@@ -26,13 +26,26 @@
   "position_no_name",
   "position_no_name",
   "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
-  "position_no_numbers",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
   "qty_price_mismatch",
   "qty_price_mismatch",
   "qty_price_mismatch",
@@ -45,14 +58,14 @@
  ],
  "sections_detail": [
   {
-   "title": "(без разделов)",
-   "positions": 39,
-   "total": 280.83264826686
+   "title": "OTPH10",
+   "positions": 44,
+   "total": 6686.0
   },
   {
    "title": "Постамент 7543,99 84 341",
-   "positions": 66,
-   "total": 777.4520089
+   "positions": 77,
+   "total": 20089.0
   }
  ]
 }

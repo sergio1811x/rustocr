@@ -1,17 +1,19 @@
 {
  "pages": 5,
- "sections": 3,
- "positions": 182,
- "resources": 13,
+ "sections": 8,
+ "positions": 186,
+ "resources": 17,
  "table_rows": 257,
- "unclassified_rows": 84,
- "qty_price_checked": 5,
- "section_totals_checked": 2,
- "total": 1.0,
+ "unclassified_rows": 21,
+ "qty_price_checked": 170,
+ "section_totals_checked": 8,
+ "total": 5358904.13,
  "vat": null,
  "total_with_vat": null,
  "errors": [
   "doc_total_mismatch",
+  "section_total_mismatch",
+  "section_total_mismatch",
   "section_total_mismatch",
   "section_total_mismatch"
  ],
@@ -21,23 +23,50 @@
   "auto_repair",
   "auto_repair",
   "auto_repair",
+  "auto_repair",
+  "qty_price_mismatch",
   "unclassified_rows"
  ],
  "sections_detail": [
   {
-   "title": "г. Москва",
-   "positions": 127,
-   "total": 23571317548449.36
+   "title": "Электролитный",
+   "positions": 5,
+   "total": 90300.0
   },
   {
-   "title": "www.vfstroy.ru",
-   "positions": 55,
+   "title": "ЗЕМЛЯНЫЕ РAБОТЫ (SRZD2)",
+   "positions": 7,
+   "total": 209837.66
+  },
+  {
+   "title": "УСТРОЙСТВО ФУНДАМЕНТА (SРЗD3)",
+   "positions": 67,
+   "total": 1617553.1
+  },
+  {
+   "title": "МОНТАЖ ПЕРЕКРЫТИЯ 1-ГО ЭТАЖА (SRZD8)",
+   "positions": 15,
+   "total": 551688.79
+  },
+  {
+   "title": "МОНТАЖ ПЕРЕКРЫТИЯ 2-ГО ЭТАЖА (SRZD9)",
+   "positions": 22,
+   "total": 557476.44
+  },
+  {
+   "title": "МОНТАЖ СТРОПИЛЬНОЙ СИСТЕМЫ (SRZD11)",
+   "positions": 31,
+   "total": 442431.36
+  },
+  {
+   "title": "ОТДЕЛКА ВНЕШНИХ СТЕН и ЦОКОЛЯ (SRЗD15)",
+   "positions": 27,
+   "total": 1771852.5
+  },
+  {
+   "title": "МОНТАЖ ВОДОСТОЧНОЙ СИСТЕМЫ, ПОДШИВКА СВЕСОВ (СРЗД16)",
+   "positions": 12,
    "total": 234386.17
-  },
-  {
-   "title": "www.vfstroy.ru",
-   "positions": 0,
-   "total": null
   }
  ]
 }
