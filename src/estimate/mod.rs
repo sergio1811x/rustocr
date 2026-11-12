@@ -9,6 +9,7 @@ pub mod repair;
 pub mod semantics;
 pub mod spell;
 pub mod structure;
+pub mod table_structure;
 pub mod validate;
 
 use crate::pipeline::{OcrEngine, OcrResult};
@@ -158,14 +159,17 @@ fn text_rows(page: usize, result: &OcrResult) -> Vec<semantics::DocRow> {
         .collect()
 }
 
-/// Собственные границы колонок каждой страницы (первый проход скелета).
-fn own_edges(pages: &[PageInput]) -> Vec<Vec<f32>> {
+/// Собственные границы колонок каждой страницы (первый проход скелета +
+/// нейро-«спасение» П.4 для слабых страниц).
+fn own_edges(engine: Option<&OcrEngine>, pages: &[PageInput]) -> Vec<Vec<f32>> {
     pages
         .iter()
-        .map(|p| {
-            structure::page_skeleton(p.img, p.result)
-                .map(|s| s.boundaries)
-                .unwrap_or_default()
+        .map(|p| match structure::page_skeleton(p.img, p.result) {
+            // скелет есть, но границы не нашлись («слепая» таблица) —
+            // нейро-спасение П.4; скелета нет вовсе (титульник, текст) —
+            // сеть не зовём
+            Some(s) => table_structure::rescue_boundaries(engine, p.img, &s.boundaries),
+            None => Vec::new(),
         })
         .collect()
 }
@@ -219,8 +223,8 @@ fn edge_affinity(a: &[f32], b: &[f32]) -> f32 {
 /// на страницах её семейства, а страницы с другой таблицей раскладываются
 /// по собственным границам. «Слепые» страницы (собственных границ <2 —
 /// шапка затянула профиль просветов) примыкают к крупнейшему семейству.
-fn family_boundaries(pages: &[PageInput]) -> Vec<Vec<f32>> {
-    let own = own_edges(pages);
+fn family_boundaries(engine: Option<&OcrEngine>, pages: &[PageInput]) -> Vec<Vec<f32>> {
+    let own = own_edges(engine, pages);
     let n = pages.len();
 
     // 1) жадная кластеризация: страница примыкает к первому семейству,
@@ -280,7 +284,7 @@ fn family_boundaries(pages: &[PageInput]) -> Vec<Vec<f32>> {
 pub fn parse_estimate(engine: Option<&OcrEngine>, pages: &[PageInput]) -> EstimateDocument {
     // границы колонок по семействам страниц: скелеты проходят дважды —
     // дёшево (геометрия и профиль просветов, без раскладки и перечтения)
-    let fam = family_boundaries(pages);
+    let fam = family_boundaries(engine, pages);
     let mut rows: Vec<semantics::DocRow> = Vec::new();
     for (i, p) in pages.iter().enumerate() {
         let edges: &[f32] = fam
@@ -331,6 +335,7 @@ mod tests {
                 resources: Vec::new(),
                 pages: vec![1],
                 raw: Vec::new(),
+                raw_main: 0,
             };
             EstimateDocument {
                 meta: Default::default(),

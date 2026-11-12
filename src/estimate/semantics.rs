@@ -1889,11 +1889,29 @@ impl Parser {
             return; // после итога — продолжаем ждать сумму
         }
         // отложенный итог: строка целиком из чисел — это его сумма
-        if let Some((kind, rate, hint)) = self.pending_total.take() {
+        if let Some((mut kind, rate, hint)) = self.pending_total.take() {
             if pure_numeric_row(&row) {
                 let num = total_from_row(&row)
                     .or_else(|| parse_total_number(&joined));
                 if let Some(v) = num {
+                    // «Всего с НДС» после НДС поднимается ТОЛЬКО при числовом
+                    // сходстве Итого + НДС ≈ N. Сводные расчёты: «ВСЕГО»
+                    // после НДС — итог всего расчёта в текущих ценах (ssr:
+                    // 55 467,12 ≠ Итого по Главам 10 076,54 + НДС 8 461,09)
+                    // — это итог ДОКУМЕНТА, а не «Всего с НДС»
+                    if kind == TotalKind::DocWithVat {
+                        if let Some(e) = self
+                            .totals
+                            .total
+                            .as_ref()
+                            .zip(self.totals.vat.as_ref())
+                            .map(|(t, va)| t.value + va.value)
+                        {
+                            if (v - e).abs() > (2.0_f64).max(e * 0.02) {
+                                kind = TotalKind::Doc;
+                            }
+                        }
+                    }
                     if let Some(h) = hint {
                         self.rename_implicit_section(&h);
                     }
@@ -1968,8 +1986,29 @@ impl Parser {
                     && bare_total_line(&lower)
                 {
                     // «НДС 18% → ВСЕГО N» (вне сетки): «Всего с НДС» —
-                    // итог документа, а не последнего раздела
-                    kind = TotalKind::DocWithVat;
+                    // итог документа, а не последнего раздела. НО только
+                    // при числовом сходстве Итого + НДС ≈ N: в сводных
+                    // расчётах «ВСЕГО» после НДС — итог всего расчёта в
+                    // текущих ценах (ssr: 55 467,12 ≠ 10 076,54 + 8 461,09)
+                    // — итог ДОКУМЕНТА, не «Всего с НДС»
+                    let num_v = cut_total_value(&row)
+                        .or_else(|| total_from_row(&row))
+                        .or_else(|| parse_total_number(&joined));
+                    let expect = self
+                        .totals
+                        .total
+                        .as_ref()
+                        .zip(self.totals.vat.as_ref())
+                        .map(|(t, v)| t.value + v.value);
+                    let consistent = match (num_v, expect) {
+                        (Some(n), Some(e)) => (n - e).abs() <= (2.0_f64).max(e * 0.02),
+                        _ => true, // проверить нечем — прежнее поведение
+                    };
+                    kind = if consistent {
+                        TotalKind::DocWithVat
+                    } else {
+                        TotalKind::Doc
+                    };
                 }
                 if kind == TotalKind::Section
                     && self.in_summary_tail
@@ -2177,8 +2216,29 @@ impl Parser {
             {
                 // «НДС 18% → ВСЕГО N»: голое «Всего» сразу после НДС —
                 // «Всего с НДС», итог документа (4-30: ВСЕГО 5 392 967,15,
-                // 4-32: 19 893 612,75), а не итог последнего раздела
-                kind = TotalKind::DocWithVat;
+                // 4-32: 19 893 612,75), а не итог последнего раздела.
+                // НО только при числовом сходстве Итого + НДС ≈ N: в
+                // сводных расчётах «ВСЕГО» после НДС — итог всего расчёта
+                // в текущих ценах (ssr: 55 467,12 при Итого по Главам
+                // 10 076,54 + НДС 8 461,09) — это итог ДОКУМЕНТА
+                let num_v = cut_total_value(&row)
+                    .or_else(|| total_from_row(&row))
+                    .or_else(|| parse_total_number(&joined));
+                let expect = self
+                    .totals
+                    .total
+                    .as_ref()
+                    .zip(self.totals.vat.as_ref())
+                    .map(|(t, v)| t.value + v.value);
+                let consistent = match (num_v, expect) {
+                    (Some(n), Some(e)) => (n - e).abs() <= (2.0_f64).max(e * 0.02),
+                    _ => true, // проверить нечем — прежнее поведение
+                };
+                kind = if consistent {
+                    TotalKind::DocWithVat
+                } else {
+                    TotalKind::Doc
+                };
             }
             if kind == TotalKind::Section
                 && self.in_summary_tail
@@ -2808,6 +2868,7 @@ impl Parser {
             resources: Vec::new(),
             pages: vec![row.page],
             raw: vec![row.joined()],
+            raw_main: 1,
         })
     }
 
@@ -3105,6 +3166,11 @@ impl Parser {
 
     fn attach_resource(&mut self, res: Resource, joined: &str) {
         if let Some(pos) = self.cur_position.as_mut() {
+            // первая подстрока ресурса фиксирует границу основной строки:
+            // всё, что дальше в raw — числа ресурсов, не позиции
+            if pos.resources.is_empty() && pos.raw_main == 0 {
+                pos.raw_main = pos.raw.len().max(1);
+            }
             pos.resources.push(res);
             pos.raw.push(joined.to_string());
             self.stats.resources += 1;

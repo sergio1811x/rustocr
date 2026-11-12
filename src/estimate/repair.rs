@@ -155,7 +155,7 @@ fn repair_section_positions(sec: &mut Section, frac: Option<u32>, notes: &mut Ve
         // qty × c ≈ total / 10^k, чиним total и достанавливаем цену ---
         if let (Some(q), Some(t)) = (&p.quantity, &p.total) {
             if p.price.is_none() && looks_lost_comma(&t.raw) && q.value > 0.0 && t.value > 0.0 {
-                let row_nums = row_numbers(&p.raw);
+                let row_nums = main_row_numbers(p);
                 for (c, craw) in row_nums {
                     if c <= 0.0 {
                         continue;
@@ -188,21 +188,39 @@ fn repair_section_positions(sec: &mut Section, frac: Option<u32>, notes: &mut Ve
             }
         }
         // --- правило C: total выглядит целым, но в строке есть число
-        // с разделителем на позиции итога (последнее число) — берём его ---
+        // с разделителем на позиции итога (последнее число) — берём его.
+        // Гард: если итог уже подтверждён арифметикой (qty × price ≈ total),
+        // целое-без-запятой — правда (сметы печатают итог без копеек),
+        // «последнее число строки» может оказаться коэффициентом/накладной. ---
         if let Some(t) = &p.total {
             if looks_lost_comma(&t.raw) {
-                if let Some((last, lraw)) = row_numbers(&p.raw).into_iter().last() {
-                    if has_separator(&lraw) && last > 0.0 && (last - t.value).abs() > 0.005 {
-                        // последнее число « целее»: и не совпадает с битым итогом
-                        let tol = (1.0_f64).max(last * 0.02);
-                        if (t.value - last).abs() > tol {
-                            notes.push(format!(
-                                "«{}»: сумма {} → {} (итог колонки «Итого» из той же строки)",
-                                name_short(&p.name),
-                                t.value,
-                                last
-                            ));
-                            p.total = Some(Num::new(last, lraw));
+                let arith_ok = match (
+                    p.quantity.as_ref().map(|n| n.value),
+                    p.price.as_ref().map(|n| n.value),
+                ) {
+                    (Some(q), Some(pr)) => {
+                        let expect = q * pr;
+                        expect > 0.0 && (expect - t.value).abs() <= (1.0_f64).max(expect * 0.02)
+                    }
+                    _ => false,
+                };
+                if !arith_ok {
+                    if let Some((last, lraw)) = main_row_numbers(p).into_iter().last() {
+                        if has_separator(&lraw)
+                            && last > 0.0
+                            && (last - t.value).abs() > 0.005
+                        {
+                            // последнее число « целее»: и не совпадает с битым итогом
+                            let tol = (1.0_f64).max(last * 0.02);
+                            if (t.value - last).abs() > tol {
+                                notes.push(format!(
+                                    "«{}»: сумма {} → {} (итог колонки «Итого» из той же строки)",
+                                    name_short(&p.name),
+                                    t.value,
+                                    last
+                                ));
+                                p.total = Some(Num::new(last, lraw));
+                            }
                         }
                     }
                 }
@@ -225,7 +243,7 @@ fn repair_section_positions(sec: &mut Section, frac: Option<u32>, notes: &mut Ve
                     let tol = (1.0_f64).max(tv * 0.02);
                     if let Some((k, _)) = shift_factor(cur, tv, tol) {
                         let corroborated = has_separator(&traw)
-                            || row_numbers(&p.raw)
+                            || main_row_numbers(p)
                                 .iter()
                                 .filter(|(v, _)| (v - tv).abs() < 0.005)
                                 .count()
@@ -244,6 +262,191 @@ fn repair_section_positions(sec: &mut Section, frac: Option<u32>, notes: &mut Ve
                             ));
                             p.price = Some(Num::new(fixed, praw));
                         }
+                    }
+                }
+            }
+        }
+        // --- правило D (П.2): qty × price ≠ total — одна из ячеек
+        // прочитана с заменой цифры, либо роли перепутаны (№ п/п попал
+        // в кол-во). «Перечитываем» строку по арифметике из чисел
+        // ОСНОВНОЙ строки позиции (без подстрок ресурсов — их числа чужие):
+        //   0) полная тройка (qty', price', total') в пуле строки;
+        //   1) total' = qty × price   2) price' = total / qty   3) qty' = total / price
+        {
+            let qv = p.quantity.as_ref().map(|n| n.value);
+            let pv = p.price.as_ref().map(|n| n.value);
+            let tv = p.total.as_ref().map(|n| n.value);
+            if let (Some(q), Some(prv), Some(tv)) = (qv, pv, tv) {
+                let expect = q * prv;
+                let tol = (1.0_f64).max(expect * 0.02);
+                if expect > 0.0 && tv > 0.0 && (tv - expect).abs() > tol {
+                    let nums = main_row_numbers(p);
+                    let mut done = false;
+                    // 0) полная согласованная тройка: q'×p'≈t', все три —
+                    // числа основной строки. Скоринг: сохранить итог (+4),
+                    // дробное кол-во (+2), не № п/п (+2), цена дороже кол-ва (+1),
+                    // близость к текущему кол-ву (до −3)
+                    if nums.len() >= 3 {
+                        let mut best: Option<(f64, usize, usize, usize)> = None;
+                        for i in 0..nums.len() {
+                            for j in 0..nums.len() {
+                                if i == j {
+                                    continue;
+                                }
+                                let (q2, _) = nums[i];
+                                let (p2, _) = nums[j];
+                                if q2 <= 0.0 || p2 <= 0.0 {
+                                    continue;
+                                }
+                                let prod = q2 * p2;
+                                if prod <= 0.0 {
+                                    continue;
+                                }
+                                // только относительный допуск: абсолютный пол
+                                // подгоняет мусорные тройки на малых числах
+                                // (0,59 × 0,01 ≈ 0,0003 при допуске 0,02 руб)
+                                let tol3 = prod * 0.02 + 1.0e-9;
+                                for k in 0..nums.len() {
+                                    if k == i || k == j {
+                                        continue;
+                                    }
+                                    let (t2, _) = nums[k];
+                                    if (t2 - prod).abs() > tol3 {
+                                        continue;
+                                    }
+                                    let mut score = 0.0_f64;
+                                    if (t2 - tv).abs() < 0.005 {
+                                        score += 4.0;
+                                    }
+                                    if q2.fract() > 0.01 {
+                                        score += 2.0;
+                                    }
+                                    if p
+                                        .line
+                                        .map_or(true, |ln| (q2 - ln as f64).abs() > 0.005)
+                                    {
+                                        score += 2.0;
+                                    }
+                                    if p2 > q2 {
+                                        score += 1.0;
+                                    }
+                                    score -= (q2 - q).abs().min(3.0);
+                                    if best.map_or(true, |(s, _, _, _)| score > s) {
+                                        best = Some((score, i, j, k));
+                                    }
+                                }
+                            }
+                        }
+                        if let Some((_, i, j, k)) = best {
+                            let (q2, qraw) = nums[i].clone();
+                            let (p2, praw2) = nums[j].clone();
+                            let (t2, traw2) = nums[k].clone();
+                            // тройка согласована — назначаем все три ячейки:
+                            // порог «изменённости» оставляем только для текста
+                            // заметки (0,002 и 0,0000648 различаются меньше
+                            // 0,005, но это разные числа)
+                            let chg =
+                                |o: f64, n: f64| (n - o).abs() > (o.abs() * 0.01).max(1.0e-9);
+                            let mut parts: Vec<String> = Vec::new();
+                            if chg(q, q2) {
+                                parts.push(format!("кол-во {} → {}", q, q2));
+                            }
+                            if chg(prv, p2) {
+                                parts.push(format!("цена {} → {}", prv, p2));
+                            }
+                            if chg(tv, t2) {
+                                parts.push(format!("сумма {} → {}", tv, t2));
+                            }
+                            if !parts.is_empty() {
+                                p.quantity = Some(Num::new(q2, qraw));
+                                p.price = Some(Num::new(p2, praw2));
+                                p.total = Some(Num::new(t2, traw2));
+                                notes.push(format!(
+                                    "«{}»: строка перечитана по арифметике: {} × {} = {:.2} ({})",
+                                    name_short(&p.name),
+                                    q2,
+                                    p2,
+                                    t2,
+                                    parts.join(", ")
+                                ));
+                            }
+                            done = true;
+                        }
+                    }
+                    // 1) итог: другое число строки, совпадающее с qty × price
+                    // (относительный допуск: итог без копеек — округление до
+                    // рубля даёт относительную ошибку ~10^-6)
+                    if !done {
+                    for (c, craw) in &nums {
+                        if *c <= 0.0
+                            || (c - tv).abs() < 0.005
+                            || (q - c).abs() < 0.005
+                            || (prv - c).abs() < 0.005
+                        {
+                            continue;
+                        }
+                        if (c - expect).abs() <= expect * 0.02 + 1.0e-9 {
+                            notes.push(format!(
+                                "«{}»: сумма {} → {} — перечитано по арифметике ({} × {} = {:.2})",
+                                name_short(&p.name),
+                                tv,
+                                c,
+                                q,
+                                prv,
+                                expect
+                            ));
+                            p.total = Some(Num::new(*c, craw.clone()));
+                            done = true;
+                            break;
+                        }
+                    }
+                    // 2) цена: qty × price' = total
+                    if !done {
+                        for (c, craw) in &nums {
+                            if *c <= 0.0 || (c - prv).abs() < 0.005 || (tv - c).abs() < 0.005 {
+                                continue;
+                            }
+                            let e2 = q * c;
+                            let tol2 = e2 * 0.02 + 1.0e-9;
+                            if (e2 - tv).abs() <= tol2 {
+                                notes.push(format!(
+                                    "«{}»: цена {} → {} — перечитано по арифметике ({} × {} = {})",
+                                    name_short(&p.name),
+                                    prv,
+                                    c,
+                                    q,
+                                    c,
+                                    tv
+                                ));
+                                p.price = Some(Num::new(*c, craw.clone()));
+                                done = true;
+                                break;
+                            }
+                        }
+                    }
+                    // 3) количество: qty' × price = total
+                    if !done {
+                        for (c, craw) in &nums {
+                            if *c <= 0.0 || (c - q).abs() < 0.005 || (tv - c).abs() < 0.005 {
+                                continue;
+                            }
+                            let e3 = c * prv;
+                            let tol3s = e3 * 0.02 + 1.0e-9;
+                            if (e3 - tv).abs() <= tol3s {
+                                notes.push(format!(
+                                    "«{}»: кол-во {} → {} — перечитано по арифметике ({} × {} = {})",
+                                    name_short(&p.name),
+                                    q,
+                                    c,
+                                    c,
+                                    prv,
+                                    tv
+                                ));
+                                p.quantity = Some(Num::new(*c, craw.clone()));
+                                break;
+                            }
+                        }
+                    }
                     }
                 }
             }
@@ -294,6 +497,19 @@ fn repair_resource(r: &mut Resource, notes: &mut Vec<String>, _pos_name: &str) {
 /// Короткое имя для сообщений.
 fn name_short(s: &str) -> String {
     s.chars().take(40).collect()
+}
+
+/// Числа ОСНОВНОЙ строки позиции: raw[..raw_main] — шапка позиции и её
+/// переносы. Подстроки ресурсов (raw[raw_main..]) исключены: их числа
+/// («0,35 1,61» из «Затрат труда машинистов») чужие и дают ложные
+/// «арифметически согласованные» тройки.
+fn main_row_numbers(p: &Position) -> Vec<(f64, String)> {
+    let cut = if p.raw_main > 0 && p.raw_main <= p.raw.len() {
+        p.raw_main
+    } else {
+        p.raw.len()
+    };
+    row_numbers(&p.raw[..cut])
 }
 
 /// Чистые числа из сырых строк позиции (для поиска цены при потерянной
@@ -459,6 +675,7 @@ mod tests {
             resources: Vec::new(),
             pages: vec![1],
             raw: Vec::new(),
+            raw_main: 0,
         }
     }
 

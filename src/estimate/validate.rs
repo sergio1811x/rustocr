@@ -405,6 +405,7 @@ mod tests {
             resources: Vec::new(),
             pages: vec![1],
             raw: Vec::new(),
+            raw_main: 0,
         }
     }
 

@@ -22,6 +22,7 @@
 
 use crate::geom::Pt;
 use crate::pipeline::{Block, OcrEngine, OcrResult};
+use crate::estimate::table_structure;
 use image::RgbImage;
 
 /// Геометрия блока: (x-центр, y-центр, ширина, высота).
@@ -545,7 +546,7 @@ pub fn analyze_page(
     r: &OcrResult,
 ) -> Option<PageTable> {
     let skel = page_skeleton(img, r)?;
-    let own = skel.boundaries.clone();
+    let own = table_structure::rescue_boundaries(engine, img, &skel.boundaries);
     layout_page(skel, engine, img, &own)
 }
 

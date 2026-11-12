@@ -33,10 +33,16 @@ const DESKEW_MAX_DEG: f32 = 5.0; // больше — это не крен (фо�
 fn deskew_enabled() -> bool {
     static V: OnceLock<bool> = OnceLock::new();
     *V.get_or_init(|| {
-        std::env::var("RUSTOCR_DESKEW")
-            .map(|v| v != "0")
-            .unwrap_or(true)
+        std::env::var("RUSTOCR_DESKEW").map(|v| v != "0").unwrap_or(true)
     })
+}
+
+/// П.3: авто-выравнивание фона на бледных страницах (контрольным проходом,
+/// «не хуже» по числу блоков). По умолчанию ВЫКЛЮЧЕНО — включается
+/// RUSTOCR_PALE_FLATTEN=1 (RUSTOCR_DET_FLATTEN=1 выравнивает все страницы).
+fn pale_flatten_enabled() -> bool {
+    static V: OnceLock<bool> = OnceLock::new();
+    *V.get_or_init(|| std::env::var("RUSTOCR_PALE_FLATTEN").ok().as_deref() == Some("1"))
 }
 
 /// Медианный угол «линейных» боксов (рад), вес — квадрат ширины: у коротких
@@ -437,6 +443,9 @@ pub struct OcrEngine {
     det: Mutex<Session>,
     rec_cyr: Mutex<Session>,
     rec_lat: Mutex<Session>,
+    /// П.4: TableStructureRec wired (SLANeXt) — опциональная модель
+    /// структуры таблиц; загружается при наличии файла и не-выключенном env
+    table_struct: Option<crate::estimate::table_structure::TableStructEngine>,
     lang_mode: LangMode,
     table_cyr: Vec<String>,
     table_lat: Vec<String>,
@@ -475,6 +484,8 @@ impl OcrEngine {
         let det = build_session(&det_path)?;
         let rec_cyr = build_session(&rec_cyr_path)?;
         let rec_lat = build_session(&rec_lat_path)?;
+        let table_struct =
+            crate::estimate::table_structure::TableStructEngine::load(env, models_dir);
         let table_cyr = rec::load_table(&models_dir.join("cyrillic_dict.txt"))?;
         let table_lat = rec::load_table(&models_dir.join("latin_dict.txt"))?;
         let lang_mode = opts.lang;
@@ -493,6 +504,7 @@ impl OcrEngine {
             det: Mutex::new(det),
             rec_cyr: Mutex::new(rec_cyr),
             rec_lat: Mutex::new(rec_lat),
+            table_struct,
             lang_mode,
             table_cyr,
             table_lat,
@@ -504,6 +516,11 @@ impl OcrEngine {
             rec_lat_out,
             det_limit,
         })
+    }
+
+    /// П.4: движок структуры таблиц (SLANeXt-wired), если модель загружена.
+    pub fn table_struct(&self) -> Option<&crate::estimate::table_structure::TableStructEngine> {
+        self.table_struct.as_ref()
     }
 
     /// Размер словаря кириллицы (для диагностики загрузки).
@@ -589,8 +606,26 @@ impl OcrEngine {
         let inp = det::preprocess(img, self.det_limit);
         let t_det = Instant::now();
         let prob = self.run_det(&inp.data, inp.shape)?;
-        let det_ms = t_det.elapsed().as_millis() as u64; // чисто инференс
-        let boxes = det::postprocess(&prob, inp.ratio, img.width(), img.height());
+        let mut det_ms = t_det.elapsed().as_millis() as u64; // чисто инференс
+        let mut boxes = det::postprocess(&prob, inp.ratio, img.width(), img.height());
+
+        // 1а) П.3: бледная страница — контрольный проход с выравниванием
+        // фона. Включается флагом RUSTOCR_PALE_FLATTEN=1: выравнивание
+        // помогает не всегда (на плотном растре выравнивание РЕЖЕТ текст
+        // на мусорные блоки: fer_ograzhdenie 68→32 позиции), поэтому
+        // выигрывает вариант с бóльшим числом блоков — и всё равно
+        // «больше блоков» ≠ «лучше блоки», авто-режим по умолчанию выключен.
+        if pale_flatten_enabled() && det::pale_text(img) {
+            let t_pale = Instant::now();
+            let flat = det::preprocess_flattened(img, self.det_limit);
+            if let Ok(prob2) = self.run_det(&flat.data, flat.shape) {
+                let boxes2 = det::postprocess(&prob2, flat.ratio, img.width(), img.height());
+                if boxes2.len() > boxes.len() {
+                    boxes = boxes2;
+                    det_ms += t_pale.elapsed().as_millis() as u64;
+                }
+            }
+        }
 
         // 2) Вырезание строк
         let crops: Vec<RgbImage> = boxes

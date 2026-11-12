@@ -408,6 +408,7 @@ mod tests {
             ],
             pages: vec![1],
             raw: vec!["1 ГЭСН 01-01-013-01 Разработка грунта м3 123,45 50,00 6 172,50".to_string()],
+            raw_main: 1,
         };
         EstimateDocument {
             meta: Meta {

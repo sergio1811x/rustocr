@@ -169,11 +169,36 @@ pub fn preprocess(img: &RgbImage, limit: u32) -> DetInput {
     let rw = (((w as f32) * ratio).round() as u32).max(1);
     let rh = (((h as f32) * ratio).round() as u32).max(1);
     let mut resized = resize_tri(img, rw, rh);
-    // П.3: выравнивание фона автоматически на бледных страницах
-    // (явный флаг RUSTOCR_DET_FLATTEN=1 включает на всех)
-    if flatten_enabled() || pale_text(&resized) {
+    // явный флаг RUSTOCR_DET_FLATTEN=1 — на всех страницах; авто-режим для
+    // бледных страниц выбирает вызывающая сторона КОНТРОЛЬНЫМ проходом:
+    // выравнивание помогает не всегда (плотный растр), выигрывает вариант
+    // с бóльшим числом блоков (см. pipeline::recognize_inner)
+    if flatten_enabled() {
         flatten_background(&mut resized);
     }
+    to_input(resized, ratio)
+}
+
+/// П.3, контрольный проход: то же самое, но фон выравнивается всегда.
+/// Вызывается только для бледных страниц; результат сравнивается с
+/// обычным и отбрасывается, если блоков стало меньше.
+pub fn preprocess_flattened(img: &RgbImage, limit: u32) -> DetInput {
+    let (w, h) = img.dimensions();
+    let long = w.max(h);
+    let ratio = if long > limit {
+        limit as f32 / long as f32
+    } else {
+        1.0
+    };
+    let rw = (((w as f32) * ratio).round() as u32).max(1);
+    let rh = (((h as f32) * ratio).round() as u32).max(1);
+    let mut resized = resize_tri(img, rw, rh);
+    flatten_background(&mut resized);
+    to_input(resized, ratio)
+}
+
+fn to_input(resized: RgbImage, ratio: f32) -> DetInput {
+    let (rw, rh) = resized.dimensions();
     let pw = (rw + 31) / 32 * 32;
     let ph = (rh + 31) / 32 * 32;
     let c = (ph as usize) * (pw as usize);
