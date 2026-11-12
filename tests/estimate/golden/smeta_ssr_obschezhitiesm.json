@@ -1,33 +1,28 @@
 {
  "pages": 3,
- "sections": 11,
- "positions": 17,
+ "sections": 10,
+ "positions": 16,
  "resources": 0,
- "table_rows": 44,
+ "table_rows": 45,
  "unclassified_rows": 7,
- "qty_price_checked": 2,
+ "qty_price_checked": 4,
  "section_totals_checked": 9,
  "total": 55467.12,
- "vat": null,
+ "vat": 8461.09,
  "total_with_vat": null,
  "errors": [
-  "section_total_mismatch",
+  "doc_total_mismatch",
   "section_total_mismatch",
   "section_total_mismatch"
  ],
  "warnings": [
-  "doc_total_excludes_sections",
   "qty_price_mismatch",
   "qty_price_mismatch",
-  "section_total_missing",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
   "unclassified_rows"
  ],
  "sections_detail": [
-  {
-   "title": "(без разделов)",
-   "positions": 1,
-   "total": null
-  },
   {
    "title": "Подготовка территории строительства",
    "positions": 1,
@@ -49,12 +44,12 @@
    "total": 130.08
   },
   {
-   "title": "Наружные сети и сооружения водоснабжения, канализации, тепло",
+   "title": "Hаружные сети и сооружения водоснабжения, канализации, тепло",
    "positions": 2,
    "total": 152.31
   },
   {
-   "title": "Благоустройство и оз зеленение территории",
+   "title": "Благоустройство и озеленение территории",
    "positions": 1,
    "total": 881.79
   },
@@ -64,17 +59,17 @@
    "total": 191.36
   },
   {
-   "title": "Прочие работы и зат раты",
+   "title": "Прочие работы и затраты",
    "positions": 5,
-   "total": 1084.86
+   "total": 897.39
   },
   {
-   "title": "Авторский (техниче еский) надзор",
+   "title": "Авторский (технический) надзор",
    "positions": 1,
    "total": 154.14
   },
   {
-   "title": "Проектные и изыск ательские работы",
+   "title": "Проектные и изыскательские работы",
    "positions": 2,
    "total": 47006.03
   }

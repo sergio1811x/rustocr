@@ -1,11 +1,11 @@
 {
  "pages": 7,
  "sections": 1,
- "positions": 38,
- "resources": 3,
- "table_rows": 125,
+ "positions": 43,
+ "resources": 0,
+ "table_rows": 123,
  "unclassified_rows": 28,
- "qty_price_checked": 36,
+ "qty_price_checked": 24,
  "section_totals_checked": 0,
  "total": 22719595.0,
  "vat": 3465701.0,
@@ -22,16 +22,13 @@
   "qty_price_mismatch",
   "qty_price_mismatch",
   "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
   "section_total_missing",
   "unclassified_rows"
  ],
  "sections_detail": [
   {
    "title": "(без названия)",
-   "positions": 38,
+   "positions": 43,
    "total": null
   }
  ]

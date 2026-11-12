@@ -1,80 +1,80 @@
 {
  "pages": 5,
  "sections": 10,
- "positions": 179,
+ "positions": 152,
  "resources": 17,
- "table_rows": 257,
- "unclassified_rows": 22,
- "qty_price_checked": 170,
- "section_totals_checked": 9,
+ "table_rows": 253,
+ "unclassified_rows": 52,
+ "qty_price_checked": 103,
+ "section_totals_checked": 10,
  "total": 5358904.13,
  "vat": null,
  "total_with_vat": null,
  "errors": [
   "doc_total_mismatch",
   "section_total_mismatch",
+  "section_total_mismatch",
+  "section_total_mismatch",
+  "section_total_mismatch",
+  "section_total_mismatch",
+  "section_total_mismatch",
+  "section_total_mismatch",
+  "section_total_mismatch",
   "section_total_mismatch"
  ],
  "warnings": [
-  "auto_repair",
-  "auto_repair",
-  "auto_repair",
-  "auto_repair",
-  "auto_repair",
-  "auto_repair",
-  "qty_price_mismatch",
   "unclassified_rows"
  ],
  "sections_detail": [
   {
-   "title": "ПОЧЕМУ«ПРАВИЛО»?",
-   "positions": 3,
+   "title": "ПОЧЕМУ ‹‹ПРАВИЛО››?",
+   "positions": 2,
    "total": 90300.0
   },
   {
-   "title": "ЗЕМЛЯНЫЕ РAБОТЫ (SRZD2)",
-   "positions": 7,
-   "total": 209837.66
+   "title": "ЗЕМЛЯНЫЕ РАБОТЫ (SRZD2)",
+   "positions": 4,
+   "total": 114480.0
   },
   {
-   "title": "УСТРОЙСТВО ФУНДАМЕНТА (SРЗD3)",
-   "positions": 66,
-   "total": 1617553.1
+   "title": "УСТРОЙСТВО ФУНДАМЕНТА (SRZD3)",
+   "positions": 18,
+   "total": 1060580.15
+  },
+  {
+   "title": "КЛАДКА НЕСУЩИХ СТЕН, МОНТАЖ ПЕРЕМЫЧЕК, ВЕНТКАНАЛОВ, ВНУТР.ПЕ",
+   "positions": 38,
+   "total": 1049643.82
   },
   {
    "title": "МОНТАЖ ПЕРЕКРЫТИЯ 1-ГО ЭТАЖА (SRZD8)",
-   "positions": 15,
+   "positions": 13,
    "total": 551688.79
   },
   {
    "title": "МОНТАЖ ПЕРЕКРЫТИЯ 2-ГО ЭТАЖА (SRZD9)",
-   "positions": 22,
-   "total": 557476.44
+   "positions": 20,
+   "total": 395860.38
   },
   {
    "title": "МОНТАЖ СТРОПИЛЬНОЙ СИСТЕМЫ (SRZD11)",
-   "positions": 11,
-   "total": 548449.36
+   "positions": 8,
+   "total": 312736.19
   },
   {
-   "title": "Торговая марка ПРАВИЛО принадлежит ООО \"ВФ СТРОЙ\"",
-   "positions": 0,
-   "total": 3.0
-  },
-  {
-   "title": "МОНТАЖ КРОВЕЛЬНОГО ПОКРЫТИЯ (SRZD13)",
+   "title": "Стоимость материалов, машин и",
    "positions": 18,
    "total": 723018.63
   },
   {
-   "title": "ОТДЕЛКА ВНЕШНИХ СТЕН и ЦОКОЛЯ (SRЗD15)",
-   "positions": 27,
+   "title": "ОТДЕЛКА ВНЕШНИХ СТЕН и ЦОКОЛЯ (SRZD15)",
+   "positions": 23,
    "total": 1771852.5
   },
   {
-   "title": "МОНТАЖ ВОДОСТОЧНОЙ СИСТЕМЫ, ПОДШИВКА СВЕСОВ (СРЗД16)",
-   "positions": 10,
-   "total": 234386.17
+   "title": "МОНТАЖ ВОДОСТОЧНОЙ СИСТЕМЫ, ПОДШИВКА СВЕСОВ (SRZD16)",
+   "positions": 8,
+   "total": 133661.42
   }
  ]
 }

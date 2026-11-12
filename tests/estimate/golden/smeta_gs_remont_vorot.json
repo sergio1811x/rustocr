@@ -1,11 +1,11 @@
 {
  "pages": 4,
  "sections": 5,
- "positions": 16,
+ "positions": 19,
  "resources": 0,
- "table_rows": 61,
- "unclassified_rows": 21,
- "qty_price_checked": 1,
+ "table_rows": 60,
+ "unclassified_rows": 20,
+ "qty_price_checked": 3,
  "section_totals_checked": 0,
  "total": 495942.25,
  "vat": 75652.21,
@@ -14,7 +14,9 @@
   "doc_total_mismatch"
  ],
  "warnings": [
-  "qty_price_mismatch",
+  "auto_repair",
+  "section_total_missing",
+  "section_total_missing",
   "section_total_missing",
   "section_total_missing",
   "section_total_missing",
@@ -22,27 +24,27 @@
  ],
  "sections_detail": [
   {
-   "title": "Ворота (демон нтаж)",
+   "title": "Ворота (демонтаж)",
    "positions": 1,
    "total": null
   },
   {
-   "title": "Ворота (изгот овление и мон нтаж)",
-   "positions": 9,
+   "title": "Ворота (изготовление и монтаж)",
+   "positions": 12,
    "total": null
   },
   {
-   "title": "Изоляция вор отин изделияі ми из пен нопла ста",
+   "title": "Изоляция воротин изделиями из пенопласта",
    "positions": 3,
    "total": null
   },
   {
-   "title": "Устройство рс остверка",
+   "title": "Устройство ростверка",
    "positions": 1,
    "total": null
   },
   {
-   "title": "Усиление кол онн",
+   "title": "Усиление колонн",
    "positions": 2,
    "total": null
   }

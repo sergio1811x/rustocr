@@ -1,11 +1,11 @@
 {
  "pages": 5,
  "sections": 2,
- "positions": 275,
+ "positions": 266,
  "resources": 0,
- "table_rows": 288,
- "unclassified_rows": 2,
- "qty_price_checked": 215,
+ "table_rows": 293,
+ "unclassified_rows": 5,
+ "qty_price_checked": 13,
  "section_totals_checked": 1,
  "total": 1285613.0,
  "vat": null,
@@ -15,19 +15,13 @@
  ],
  "warnings": [
   "doc_total_excludes_sections",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
   "section_total_missing",
   "unclassified_rows"
  ],
  "sections_detail": [
   {
-   "title": "(без разделов)",
-   "positions": 253,
+   "title": "цена материалов и",
+   "positions": 244,
    "total": 1285613.0
   },
   {

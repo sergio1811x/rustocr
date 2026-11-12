@@ -3,9 +3,9 @@
  "sections": 6,
  "positions": 74,
  "resources": 0,
- "table_rows": 148,
- "unclassified_rows": 19,
- "qty_price_checked": 4,
+ "table_rows": 146,
+ "unclassified_rows": 16,
+ "qty_price_checked": 12,
  "section_totals_checked": 0,
  "total": 2396850.17,
  "vat": 365621.21,
@@ -14,8 +14,6 @@
   "doc_total_mismatch"
  ],
  "warnings": [
-  "qty_price_mismatch",
-  "qty_price_mismatch",
   "section_total_missing",
   "section_total_missing",
   "section_total_missing",
@@ -36,7 +34,7 @@
    "total": null
   },
   {
-   "title": "Устройство смотровых и дренажных к коло одцев",
+   "title": "Устройство смотровых и дренажных колодцев",
    "positions": 25,
    "total": null
   },
@@ -46,12 +44,12 @@
    "total": null
   },
   {
-   "title": "Установка грунтового репера Rр 1",
+   "title": "Установка грунтового репера Rp 1",
    "positions": 12,
    "total": null
   },
   {
-   "title": "Устройство наблюдательных скважі ин Ск в №3, Скв№ 4",
+   "title": "Устройство наблюдательных скважин Скв №3, Скв№4",
    "positions": 15,
    "total": null
   }

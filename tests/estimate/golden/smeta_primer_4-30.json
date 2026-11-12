@@ -1,14 +1,14 @@
 {
  "pages": 7,
  "sections": 12,
- "positions": 172,
+ "positions": 166,
  "resources": 51,
- "table_rows": 408,
+ "table_rows": 423,
  "unclassified_rows": 122,
  "qty_price_checked": 1,
  "section_totals_checked": 3,
  "total": null,
- "vat": 322656.01,
+ "vat": 822656.01,
  "total_with_vat": null,
  "errors": [
   "section_total_mismatch",
@@ -104,18 +104,18 @@
  "sections_detail": [
   {
    "title": "(без разделов)",
-   "positions": 7,
+   "positions": 1,
    "total": 0.0
   },
   {
-   "title": "Электроус станово очные изделия",
+   "title": "Электроустановочные изделия",
    "positions": 42,
    "total": 761762.16
   },
   {
-   "title": "Электроо свещен іие",
+   "title": "Электроосвещение",
    "positions": 123,
-   "total": 392967.15
+   "total": 5392967.15
   }
  ]
 }

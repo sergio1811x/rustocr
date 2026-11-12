@@ -1,12 +1,12 @@
 {
  "pages": 7,
  "sections": 7,
- "positions": 294,
- "resources": 8,
- "table_rows": 406,
- "unclassified_rows": 63,
- "qty_price_checked": 19,
- "section_totals_checked": 5,
+ "positions": 265,
+ "resources": 7,
+ "table_rows": 388,
+ "unclassified_rows": 51,
+ "qty_price_checked": 218,
+ "section_totals_checked": 6,
  "total": 8354724.64,
  "vat": null,
  "total_with_vat": null,
@@ -16,60 +16,47 @@
   "section_total_mismatch",
   "section_total_mismatch",
   "section_total_mismatch",
+  "section_total_mismatch",
   "section_total_mismatch"
  ],
  "warnings": [
-  "auto_repair",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
   "section_total_missing",
   "unclassified_rows"
  ],
  "sections_detail": [
   {
    "title": "(без разделов)",
-   "positions": 5,
+   "positions": 2,
    "total": null
   },
   {
    "title": "Монолитный каркас дома",
-   "positions": 93,
-   "total": 3382854.8
+   "positions": 86,
+   "total": 2048389.8
   },
   {
    "title": "Заполнение каркаса",
-   "positions": 34,
-   "total": 2215429.15
+   "positions": 35,
+   "total": 755822.4
   },
   {
    "title": "Устройство кровли",
-   "positions": 58,
-   "total": 577462.89
+   "positions": 51,
+   "total": 341182.89
   },
   {
    "title": "Устройство гидроизоляции балконов и террас",
-   "positions": 38,
-   "total": 365118.49
+   "positions": 34,
+   "total": 222723.49
   },
   {
    "title": "Фасад",
-   "positions": 41,
-   "total": 604121.92
+   "positions": 35,
+   "total": 1538126.92
   },
   {
    "title": "Расходные материалы",
-   "positions": 25,
+   "positions": 22,
    "total": 8140862.87
   }
  ]

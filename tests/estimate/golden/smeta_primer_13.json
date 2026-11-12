@@ -1,11 +1,11 @@
 {
  "pages": 29,
  "sections": 10,
- "positions": 337,
+ "positions": 469,
  "resources": 7,
- "table_rows": 825,
- "unclassified_rows": 85,
- "qty_price_checked": 238,
+ "table_rows": 867,
+ "unclassified_rows": 90,
+ "qty_price_checked": 242,
  "section_totals_checked": 10,
  "total": 3653728.0,
  "vat": null,
@@ -24,47 +24,48 @@
   "section_total_mismatch"
  ],
  "warnings": [
+  "position_duplicate",
   "unclassified_rows"
  ],
  "sections_detail": [
   {
-   "title": "(без разделов)",
-   "positions": 107,
+   "title": "руб",
+   "positions": 145,
    "total": 90183.0
   },
   {
-   "title": "По лы",
-   "positions": 53,
+   "title": "Полы",
+   "positions": 81,
    "total": 870351.0
   },
   {
-   "title": "Ок онн ые заполнения",
-   "positions": 15,
+   "title": "Оконные заполнения",
+   "positions": 23,
    "total": 93057.0
   },
   {
-   "title": "Дв ерн ые проемы",
-   "positions": 12,
+   "title": "Дверные проемы",
+   "positions": 16,
    "total": 92595.0
   },
   {
-   "title": "От дел очные работы",
-   "positions": 67,
+   "title": "Отделочные работы",
+   "positions": 95,
    "total": 63813.0
   },
   {
-   "title": "По лы из досок",
-   "positions": 39,
+   "title": "Полы из досок",
+   "positions": 54,
    "total": 83948.0
   },
   {
-   "title": "$У_c трoі йство перегородок",
-   "positions": 7,
+   "title": "Устройство перегородок",
+   "positions": 9,
    "total": 55179.0
   },
   {
-   "title": "Me тал лические конструкции",
-   "positions": 7,
+   "title": "Металлические конструкции",
+   "positions": 8,
    "total": 61191.0
   },
   {
@@ -73,8 +74,8 @@
    "total": 73289.0
   },
   {
-   "title": "$y_c$ троі йстВО оСНОВАНИй",
-   "positions": 29,
+   "title": "Устройство оснований",
+   "positions": 37,
    "total": 69233.0
   }
  ]

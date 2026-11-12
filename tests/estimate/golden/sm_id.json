@@ -1,17 +1,18 @@
 {
  "pages": 13,
  "sections": 10,
- "positions": 125,
+ "positions": 118,
  "resources": 2,
- "table_rows": 241,
- "unclassified_rows": 57,
- "qty_price_checked": 32,
- "section_totals_checked": 9,
+ "table_rows": 270,
+ "unclassified_rows": 91,
+ "qty_price_checked": 9,
+ "section_totals_checked": 10,
  "total": 401877.0,
- "vat": null,
+ "vat": 471.8,
  "total_with_vat": null,
  "errors": [
   "doc_total_mismatch",
+  "section_total_mismatch",
   "section_total_mismatch",
   "section_total_mismatch",
   "section_total_mismatch",
@@ -27,27 +28,10 @@
   "qty_price_mismatch",
   "qty_price_mismatch",
   "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "section_total_missing",
-  "unclassified_rows"
+  "unclassified_rows",
+  "vat_mismatch"
  ],
  "sections_detail": [
-  {
-   "title": "(без разделов)",
-   "positions": 2,
-   "total": null
-  },
   {
    "title": "ФУНДАМЕНТЫ",
    "positions": 11,
@@ -76,22 +60,27 @@
   {
    "title": "ОКНА",
    "positions": 7,
-   "total": 53.81
+   "total": 76777.0
   },
   {
-   "title": "БАЛКОННЫЕ ПЛАСТИКОВЫЕ",
-   "positions": 13,
+   "title": "ДВЕРИ",
+   "positions": 12,
    "total": 11365.0
   },
   {
-   "title": "Полы",
+   "title": "ПОЛЫ",
    "positions": 10,
    "total": 10564.0
   },
   {
-   "title": "ВНУТРЕННЯЯ ОТД ЕЛКА",
-   "positions": 22,
-   "total": 3092.94
+   "title": "ВНУТРЕННЯЯ ОТДЕЛКА",
+   "positions": 4,
+   "total": 10840.0
+  },
+  {
+   "title": "Строительные металлические конструкции",
+   "positions": 14,
+   "total": 431877.0
   }
  ]
 }

@@ -1,11 +1,11 @@
 {
  "pages": 2,
- "sections": 2,
- "positions": 9,
+ "sections": 1,
+ "positions": 8,
  "resources": 0,
- "table_rows": 35,
- "unclassified_rows": 12,
- "qty_price_checked": 0,
+ "table_rows": 34,
+ "unclassified_rows": 10,
+ "qty_price_checked": 3,
  "section_totals_checked": 0,
  "total": 121190.59,
  "vat": 18486.7,
@@ -15,15 +15,9 @@
  ],
  "warnings": [
   "section_total_missing",
-  "section_total_missing",
   "unclassified_rows"
  ],
  "sections_detail": [
-  {
-   "title": "(без разделов)",
-   "positions": 1,
-   "total": null
-  },
   {
    "title": "Режимно-наладочные испытания",
    "positions": 8,

@@ -1,58 +1,36 @@
 {
  "pages": 5,
- "sections": 7,
- "positions": 41,
+ "sections": 6,
+ "positions": 37,
  "resources": 0,
- "table_rows": 96,
- "unclassified_rows": 38,
- "qty_price_checked": 37,
+ "table_rows": 94,
+ "unclassified_rows": 32,
+ "qty_price_checked": 0,
  "section_totals_checked": 0,
  "total": 1544414.6,
  "vat": 235588.66,
  "total_with_vat": null,
- "errors": [
-  "doc_total_mismatch"
- ],
+ "errors": [],
  "warnings": [
-  "auto_repair",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "section_total_missing",
-  "section_total_missing",
-  "section_total_missing",
-  "section_total_missing",
-  "section_total_missing",
-  "section_total_missing",
+  "position_no_name",
+  "position_no_name",
+  "position_no_name",
   "section_total_missing",
   "unclassified_rows"
  ],
  "sections_detail": [
   {
-   "title": "(без разделов)",
-   "positions": 3,
-   "total": null
-  },
-  {
-   "title": "Землян ные работы",
+   "title": "Землянные работы",
    "positions": 4,
    "total": null
   },
   {
-   "title": "Фундам мент",
-   "positions": 13,
+   "title": "Фундамент",
+   "positions": 12,
    "total": null
   },
   {
-   "title": "Перекр ытие",
+   "title": "Перекрытие",
    "positions": 8,
    "total": null
   },
@@ -62,12 +40,12 @@
    "total": null
   },
   {
-   "title": "Проемь ы",
+   "title": "Проемы",
    "positions": 6,
    "total": null
   },
   {
-   "title": "Кровля 1",
+   "title": "Кровля",
    "positions": 5,
    "total": null
   }

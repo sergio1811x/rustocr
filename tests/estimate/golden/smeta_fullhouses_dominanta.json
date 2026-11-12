@@ -1,16 +1,17 @@
 {
  "pages": 3,
- "sections": 9,
- "positions": 147,
+ "sections": 8,
+ "positions": 148,
  "resources": 0,
- "table_rows": 167,
- "unclassified_rows": 11,
+ "table_rows": 168,
+ "unclassified_rows": 5,
  "qty_price_checked": 0,
  "section_totals_checked": 7,
  "total": 10975506.0,
  "vat": null,
  "total_with_vat": null,
  "errors": [
+  "section_total_mismatch",
   "section_total_mismatch"
  ],
  "warnings": [
@@ -26,7 +27,7 @@
   },
   {
    "title": "Строительство фундамента",
-   "positions": 37,
+   "positions": 34,
    "total": 2962483.0
   },
   {
@@ -41,7 +42,7 @@
   },
   {
    "title": "Строительство 2го этажа",
-   "positions": 25,
+   "positions": 24,
    "total": 1630007.0
   },
   {
@@ -55,14 +56,9 @@
    "total": 1672601.0
   },
   {
-   "title": "Транспортные и накладные расходы, разгрузка, крепеж",
-   "positions": 2,
+   "title": "Возведение внутренних перегородочных стен",
+   "positions": 7,
    "total": 825826.0
-  },
-  {
-   "title": "Оплата строительства дома производится поэтапно",
-   "positions": 0,
-   "total": null
   }
  ]
 }

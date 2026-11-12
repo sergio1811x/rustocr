@@ -1,11 +1,11 @@
 {
  "pages": 6,
  "sections": 14,
- "positions": 196,
- "resources": 5,
- "table_rows": 270,
- "unclassified_rows": 10,
- "qty_price_checked": 179,
+ "positions": 174,
+ "resources": 1,
+ "table_rows": 272,
+ "unclassified_rows": 45,
+ "qty_price_checked": 161,
  "section_totals_checked": 14,
  "total": null,
  "vat": null,
@@ -21,31 +21,11 @@
   "section_total_mismatch",
   "section_total_mismatch",
   "section_total_mismatch",
-  "section_total_mismatch",
   "section_total_mismatch"
  ],
  "warnings": [
   "auto_repair",
   "doc_total_missing",
-  "position_duplicate",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
   "qty_price_mismatch",
   "qty_price_mismatch",
   "qty_price_mismatch",
@@ -215,18 +195,18 @@
   },
   {
    "title": "Земляные работы",
-   "positions": 4,
-   "total": 46784.05
+   "positions": 5,
+   "total": 57850.0
   },
   {
    "title": "Фундамент",
-   "positions": 18,
+   "positions": 16,
    "total": 372169.65
   },
   {
    "title": "Коробка дома",
-   "positions": 53,
-   "total": 1447307.0
+   "positions": 45,
+   "total": 982297.67
   },
   {
    "title": "Устройство перекрытия 2-го этажа",
@@ -240,43 +220,43 @@
   },
   {
    "title": "Устройство вентканалов",
-   "positions": 14,
+   "positions": 10,
    "total": 138857.0
   },
   {
    "title": "Стропильная система кровли",
-   "positions": 34,
-   "total": 16052.0
+   "positions": 30,
+   "total": 3008563.0
   },
   {
    "title": "Фасад",
-   "positions": 12,
+   "positions": 11,
    "total": 718451.0
   },
   {
    "title": "Окна, двери",
-   "positions": 9,
-   "total": 231949.0
+   "positions": 8,
+   "total": 3968389.0
   },
   {
    "title": "Межкомнатные перегородки",
-   "positions": 4,
+   "positions": 2,
    "total": 110013.0
   },
   {
    "title": "Утепление кровли",
-   "positions": 6,
-   "total": 55371.0
+   "positions": 5,
+   "total": 41764.32
   },
   {
    "title": "Подшивка свесов",
-   "positions": 11,
+   "positions": 10,
    "total": 84625.0
   },
   {
    "title": "Система водостока",
-   "positions": 10,
-   "total": 805102.0
+   "positions": 11,
+   "total": 4320162.0
   }
  ]
 }

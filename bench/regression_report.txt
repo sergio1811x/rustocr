@@ -1,0 +1,72 @@
+документ                                           поз     разд       unc      ош     пре                  total                  vat
+----------------------------------------------------------------------------------------------------------------------------------
+ekb_fundament                                    27→27      1→1       0→0     0→0     0→0    1 341 653→1 341 653                    —
+ekb_steny                                        27→27      1→1       0→0     1→1     0→0    1 371 392→1 371 392                    —
+karkas_kd1                                     275→266      2→2       2→5     1→1     9→3    1 285 613→1 285 613                    — ◄unc↑ ◄поз↓
+primer_smet_3-1                                  16→15      1→1       6→6     2→2     2→2    1 721 671→1 721 671                    —
+sm_id                                          125→118    10→10     57→91   10→11    18→6        401 877→401 877                —→472 ◄unc↑ ◄поз↓
+smeta-na-stroitelstvo-doma                       41→37      7→6     38→32     1→0    20→5    1 544 415→1 544 415      235 589→235 589 ◄поз↓
+smeta_fer_ograzhdenie                            68→68      3→3     22→22     2→2   16→16        123 867→123 867          7 446→7 446
+smeta_fer_protivoopolznevye                      74→74      6→6     19→16     1→1     9→7    2 396 850→2 396 850      365 621→365 621
+smeta_fullhouses_dominanta                     147→148      9→8      11→5     1→2     3→3  10 975 506→10 975 506                    —
+smeta_galaktion_lsr                              41→37      7→6     38→32     1→0    20→5    1 544 415→1 544 415      235 589→235 589 ◄поз↓
+smeta_grandsmeta_nytva                           40→36      5→2     76→76     6→3     1→3    2 010 425→2 010 425      306 675→306 675 ◄поз↓
+smeta_gs_puskonaladka_kotelnoj                     9→8      2→1     12→10     1→1     3→2        121 191→121 191        18 487→18 487
+smeta_gs_remont_vorot                            16→19      5→5     21→20     1→1     5→7        495 942→495 942        75 652→75 652
+smeta_gs_santehpribory                           28→44      6→7     20→18     1→1     8→8          39 126→39 126          5 968→5 968
+smeta_karkasdom_kd36                           103→101      2→2       8→9     1→1     4→4    1 082 007→1 082 007                    — ◄unc↑
+smeta_karkasproekt_kd54                          26→26      1→1       6→4     1→1     1→1        894 742→894 742                    —
+smeta_kirpich_lsr                                38→43      1→1     28→28     1→1   13→10  22 719 595→22 719 595  3 465 701→3 465 701
+smeta_newizba_5644                             196→174    14→14     10→45   12→11 181→162                      —                    — ◄unc↑ ◄поз↓
+smeta_objektnaya_moyka                           10→10      2→2       4→3     2→1     8→2               —→40 158                    —
+smeta_pravilo_zx24                             179→152    10→10     22→52    3→10     8→1    5 358 904→5 358 904                    — ◄unc↑ ◄поз↓
+smeta_primer_13                                337→469    10→10     85→90   11→11     1→2    3 653 728→3 653 728                    — ◄unc↑
+smeta_primer_2                                 114→113      6→6     16→20     7→7     6→6    9 569 708→9 569 708                    — ◄unc↑
+smeta_primer_4-30                              172→166    12→12   122→122     3→3   84→84                      —      322 656→822 656 ◄поз↓ ◄vat
+smeta_primer_4-32                              226→246      3→3   232→264     2→2 114→116                      —     34 619→3 034 619 ◄unc↑ ◄vat
+smeta_res_gazosnabzhenie_kineshma               97→104      3→2     40→43     1→1   83→17          93 442→93 442                    — ◄unc↑
+smeta_res_remont_furanfleks                      19→19      1→1     13→13     0→0   18→18  13 104 761→13 104 761                    —
+smeta_rik_pamyatnik                            118→118      2→2   177→177     2→2   38→38                      —                    —
+smeta_ruvitstroy_1etazh                        137→131      6→6     28→40     6→2   13→11               —→63 655                    — ◄unc↑ ◄поз↓
+smeta_ssr_obschezhitiesm                         17→16    11→10       7→7     3→3     5→5          55 467→55 467              —→8 461
+smeta_stroyedm_191m2                           294→265      7→7     63→51     6→7    16→2    8 354 725→8 354 725                    — ◄поз↓
+vor_ecoportal                                  677→573      1→1   446→539     1→1 407→440           2 786→33 961                    — ◄unc↑ ◄поз↓ ◄total
+----------------------------------------------------------------------------------------------------------------------------------
+Σ поз 3694→3650, Σ unc 1629→1840, Σ ошибок 91→90, Σ предупреждений 1114→986
+Σ total (нов) 90 398 794
+ФЛАГИ: karkas_kd1:unc+3, karkas_kd1:pos-9, sm_id:unc+34, sm_id:pos-7, smeta-na-stroitelstvo-doma:pos-4, smeta_galaktion_lsr:pos-4, smeta_grandsmeta_nytva:pos-4, smeta_karkasdom_kd36:unc+1, smeta_newizba_5644:unc+35, smeta_newizba_5644:pos-22, smeta_pravilo_zx24:unc+30, smeta_pravilo_zx24:pos-27, smeta_primer_13:unc+5, smeta_primer_2:unc+4, smeta_primer_4-30:pos-6, smeta_primer_4-30:vat 322656.01->822656.01, smeta_primer_4-32:unc+32, smeta_primer_4-32:vat 34618.89->3034618.89, smeta_res_gazosnabzhenie_kineshma:unc+3, smeta_ruvitstroy_1etazh:unc+12, smeta_ruvitstroy_1etazh:pos-6, smeta_stroyedm_191m2:pos-29, vor_ecoportal:unc+93, vor_ecoportal:pos-104, vor_ecoportal:total 2786.0->33961.0
+документ                                       кодПДФ кодJSON потеряно        итогПДФ       итогJSON  итог
+----------------------------------------------------------------------------------------------------------
+ekb_fundament                                       0       0        0              —      1 341 653     —
+ekb_steny                                           0       0        0              —      1 371 392     —
+karkas_kd1                                          0       0        0              —      1 285 613     —
+primer_smet_3-1                                     3       3        0              —      1 721 671     —
+sm_id                                              33      33        0              —        401 877     —
+smeta-na-stroitelstvo-doma                         20      20        0              —      1 544 415     —
+smeta_fer_ograzhdenie                               0      15        0              —        123 867     —
+smeta_fer_protivoopolznevye                        34      34        0              —      2 396 850     —
+smeta_fullhouses_dominanta                          0       0        0              —     10 975 506     —
+smeta_galaktion_lsr                                20      20        0              —      1 544 415     —
+smeta_grandsmeta_nytva                              8       8        0              —      2 010 425     —
+smeta_gs_puskonaladka_kotelnoj                      4       4        0              —        121 191     —
+smeta_gs_remont_vorot                               9       9        0              —        495 942     —
+smeta_gs_santehpribory                             13      13        0              —         39 126     —
+smeta_karkasdom_kd36                                0       0        0              —      1 082 007     —
+smeta_karkasproekt_kd54                             0       0        0              —        894 742     —
+smeta_kirpich_lsr                                  32      32        0              —     22 719 595     —
+smeta_newizba_5644                                  0       0        0              —              —     —
+smeta_objektnaya_moyka                              0       0        0              —         40 158     —
+smeta_pravilo_zx24                                  0       0        0              —      5 358 904     —
+smeta_primer_13                                    63      63        0              —      3 653 728     —
+smeta_primer_2                                      8       8        0              —      9 569 708     —
+smeta_primer_4-30                                   0       0        0              —              —     —
+smeta_primer_4-32                                   0       0        0              —              —     —
+smeta_res_gazosnabzhenie_kineshma                  21      21        0              —         93 442     —
+smeta_res_remont_furanfleks                         0       0        0              —     13 104 761     —
+smeta_rik_pamyatnik                                 0      16        0              —              —     —
+smeta_ruvitstroy_1etazh                             0       0        0              —         63 655     —
+smeta_ssr_obschezhitiesm                            0       0        0              —         55 467     —
+smeta_stroyedm_191m2                                0       0        0      8 354 724      8 354 725    ok
+vor_ecoportal                                       0       0        0              —         33 961     —
+----------------------------------------------------------------------------------------------------------
+OK: 31 документов: коды и итоги сошлись с текстовым слоем

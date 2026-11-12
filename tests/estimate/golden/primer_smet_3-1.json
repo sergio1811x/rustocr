@@ -1,9 +1,9 @@
 {
  "pages": 2,
  "sections": 1,
- "positions": 16,
+ "positions": 15,
  "resources": 0,
- "table_rows": 49,
+ "table_rows": 50,
  "unclassified_rows": 6,
  "qty_price_checked": 2,
  "section_totals_checked": 1,
@@ -20,8 +20,8 @@
  ],
  "sections_detail": [
   {
-   "title": "(без разделов)",
-   "positions": 16,
+   "title": "руб",
+   "positions": 15,
    "total": 1457105.0
   }
  ]

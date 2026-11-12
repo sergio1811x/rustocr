@@ -1,10 +1,10 @@
 {
  "pages": 12,
  "sections": 6,
- "positions": 114,
+ "positions": 113,
  "resources": 12,
- "table_rows": 221,
- "unclassified_rows": 16,
+ "table_rows": 224,
+ "unclassified_rows": 20,
  "qty_price_checked": 63,
  "section_totals_checked": 6,
  "total": 9569707.87,
@@ -39,22 +39,22 @@
    "total": 6569322.0
   },
   {
-   "title": "л 3 Трубопровод опорожнения К3",
-   "positions": 16,
+   "title": "Трубопровод опорожнения К3",
+   "positions": 15,
    "total": 4166.36
   },
   {
-   "title": "л 4 Хозяйственно-питьевой водопровод В1",
+   "title": "Хозяйственно-питьевой водопровод В1",
    "positions": 23,
    "total": 409842.29
   },
   {
-   "title": "л 5 Канализация К2, К12",
+   "title": "Канализация К2, К12",
    "positions": 17,
    "total": 412770.03
   },
   {
-   "title": "л 6 Прочие работы",
+   "title": "Прочие работы",
    "positions": 16,
    "total": 564863.12
   }

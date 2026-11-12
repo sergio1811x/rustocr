@@ -1,14 +1,14 @@
 {
  "pages": 13,
  "sections": 3,
- "positions": 226,
- "resources": 86,
- "table_rows": 636,
- "unclassified_rows": 232,
+ "positions": 246,
+ "resources": 130,
+ "table_rows": 758,
+ "unclassified_rows": 264,
  "qty_price_checked": 0,
  "section_totals_checked": 2,
  "total": null,
- "vat": 34618.89,
+ "vat": 3034618.89,
  "total_with_vat": null,
  "errors": [
   "section_total_mismatch",
@@ -127,24 +127,26 @@
   "position_no_numbers",
   "position_no_numbers",
   "position_no_numbers",
+  "position_no_numbers",
+  "position_no_numbers",
   "section_total_missing",
   "unclassified_rows"
  ],
  "sections_detail": [
   {
    "title": "(без разделов)",
-   "positions": 6,
+   "positions": 1,
    "total": null
   },
   {
-   "title": "емлянні ые рабс оты",
+   "title": "Землянные работы",
    "positions": 7,
    "total": 291802.25
   },
   {
-   "title": "Ф Рундаме нт",
-   "positions": 213,
-   "total": 893612.75
+   "title": "Фундамент",
+   "positions": 238,
+   "total": 19893612.75
   }
  ]
 }

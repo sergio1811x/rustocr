@@ -1,13 +1,13 @@
 {
  "pages": 4,
  "sections": 2,
- "positions": 103,
+ "positions": 101,
  "resources": 0,
- "table_rows": 214,
- "unclassified_rows": 8,
- "qty_price_checked": 7,
+ "table_rows": 216,
+ "unclassified_rows": 9,
+ "qty_price_checked": 97,
  "section_totals_checked": 1,
- "total": 1082006.6,
+ "total": 1082006.66,
  "vat": null,
  "total_with_vat": null,
  "errors": [
@@ -22,8 +22,8 @@
  "sections_detail": [
   {
    "title": "вес",
-   "positions": 87,
-   "total": 1082006.6
+   "positions": 85,
+   "total": 1082006.66
   },
   {
    "title": "Отопление",

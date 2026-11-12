@@ -3,37 +3,30 @@
  "sections": 2,
  "positions": 10,
  "resources": 0,
- "table_rows": 20,
- "unclassified_rows": 4,
- "qty_price_checked": 6,
- "section_totals_checked": 2,
- "total": null,
+ "table_rows": 19,
+ "unclassified_rows": 3,
+ "qty_price_checked": 0,
+ "section_totals_checked": 1,
+ "total": 40158.07,
  "vat": null,
  "total_with_vat": null,
  "errors": [
-  "section_total_mismatch",
-  "section_total_mismatch"
+  "doc_total_mismatch"
  ],
  "warnings": [
-  "doc_total_missing",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
+  "section_total_missing",
   "unclassified_rows"
  ],
  "sections_detail": [
   {
-   "title": "Расчетный измеритель единичной стоимо сти",
+   "title": "Строительство мойки легкового транспорта, магазина и кафе",
    "positions": 7,
-   "total": 32069.48
+   "total": 32140.23
   },
   {
-   "title": "B ре менные зда ания и сооружения",
+   "title": "Временные здания и сооружения",
    "positions": 3,
-   "total": 40246.65
+   "total": null
   }
  ]
 }
