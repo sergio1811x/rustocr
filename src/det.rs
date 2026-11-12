@@ -50,6 +50,48 @@ fn flatten_enabled() -> bool {
     *V.get_or_init(|| std::env::var("RUSTOCR_DET_FLATTEN").ok().as_deref() == Some("1"))
 }
 
+/// Авто-детект БЛЕДНОГО текста (П.3): на отсканированных сметах текст
+/// бывает выцветшим/тонким — на фоне «серой» бумаги детектор DBNet его
+/// теряет. Признаки: чернил (тёмных пикселей) мало, либо «чернила»
+/// светло-серые. Выборочный проход по странице (до ~200 тыс. точек).
+pub(crate) fn pale_text(img: &RgbImage) -> bool {
+    static DISABLED: OnceLock<bool> = OnceLock::new();
+    if *DISABLED.get_or_init(|| std::env::var("RUSTOCR_PALE_DETECT").ok().as_deref() == Some("0")) {
+        return false;
+    }
+    let (w, h) = img.dimensions();
+    let n = (w as usize) * (h as usize);
+    if n < 1000 {
+        return false;
+    }
+    let step = (n / 200_000).max(1);
+    let (mut dark, mut mid, mut sum_dark, mut count) = (0u64, 0u64, 0u64, 0u64);
+    for (k, p) in img.as_raw().chunks_exact(3).enumerate() {
+        if k % step != 0 {
+            continue;
+        }
+        let luma = (p[0] as u32 * 299 + p[1] as u32 * 587 + p[2] as u32 * 114) / 1000;
+        if luma < 128 {
+            dark += 1;
+            sum_dark += luma as u64;
+        } else if luma < 200 {
+            mid += 1;
+        }
+        count += 1;
+    }
+    if count == 0 {
+        return false;
+    }
+    let ink = (dark + mid) as f64 / count as f64;
+    let dark_mean = if dark > 0 {
+        sum_dark as f64 / dark as f64
+    } else {
+        255.0
+    };
+    // бледный: чернил < 1,2 % ИЛИ «чернила» — светло-серые (средняя > 105)
+    ink < 0.012 || ((dark as f64 / count as f64) < 0.05 && dark_mean > 105.0)
+}
+
 fn env_u32(name: &str, default: u32) -> u32 {
     std::env::var(name)
         .ok()
@@ -127,7 +169,9 @@ pub fn preprocess(img: &RgbImage, limit: u32) -> DetInput {
     let rw = (((w as f32) * ratio).round() as u32).max(1);
     let rh = (((h as f32) * ratio).round() as u32).max(1);
     let mut resized = resize_tri(img, rw, rh);
-    if flatten_enabled() {
+    // П.3: выравнивание фона автоматически на бледных страницах
+    // (явный флаг RUSTOCR_DET_FLATTEN=1 включает на всех)
+    if flatten_enabled() || pale_text(&resized) {
         flatten_background(&mut resized);
     }
     let pw = (rw + 31) / 32 * 32;

@@ -3206,6 +3206,8 @@ impl Parser {
     fn start_section(&mut self, number: Option<String>, title: String, is_sub: bool) {
         self.saw_section = true;
         self.name_col = None;
+        // рваные OCR-слова в названии («Фундам мент») — склейка по словарю
+        let title = crate::estimate::spell::fix_title(&title);
         // заголовок раздела — новое начало: «голый» заголовок сразу после
         // него (подраздел Гранд-Сметы «ремонт малой сцены») не должен
         // приниматься за следующий раздел по правилу «после итога»

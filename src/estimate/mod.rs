@@ -7,6 +7,7 @@ pub mod model;
 pub mod pazl;
 pub mod repair;
 pub mod semantics;
+pub mod spell;
 pub mod structure;
 pub mod validate;
 
