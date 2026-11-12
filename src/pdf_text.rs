@@ -93,8 +93,21 @@ impl PageText {
     /// X-просвету) → `Block` с `lang = "txt"`.
     pub fn to_ocr_result(&self, img_w: u32, img_h: u32) -> OcrResult {
         let t0 = std::time::Instant::now();
-        let sx = img_w as f32 / self.w_pt.max(1.0);
-        let sy = img_h as f32 / self.h_pt.max(1.0);
+        // `/Rotate 90|270`: pdftotext отдаёт координаты слов в системе
+        // ПОВЁРНУТОЙ (видимой) страницы, но width/height тега <page> —
+        // размеры неповёрнутой. Рендер pdftoppm тоже в видимой системе,
+        // поэтому при несовпадении пропорций размеры меняем местами.
+        let (ew, eh) = if (img_w.max(1) as f32 / img_h.max(1) as f32
+            - self.w_pt.max(1.0) / self.h_pt.max(1.0))
+        .abs()
+            < 0.05
+        {
+            (self.w_pt, self.h_pt)
+        } else {
+            (self.h_pt, self.w_pt)
+        };
+        let sx = img_w as f32 / ew.max(1.0);
+        let sy = img_h as f32 / eh.max(1.0);
 
         // слова в пикселях, без пустых
         let mut ws: Vec<(f32, f32, f32, f32, String)> = self
