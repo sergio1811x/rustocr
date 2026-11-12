@@ -720,6 +720,8 @@ fn totals_kind_text(lower: &str) -> Option<(TotalKind, Option<f64>)> {
             || fuzzy_contains(&lz, "посмете")
             || lower.contains("по объекту")
             || squeezed.contains("пообъекту")
+            || lower.contains("по объектн") // «по объектНОЙ смете»
+            || squeezed.contains("пообъектн")
             || lower.contains("по расч")
             || squeezed.contains("порасч"))
     {
@@ -1740,6 +1742,22 @@ pub fn parse_document(rows: Vec<DocRow>) -> EstimateDocument {
     p.finish()
 }
 
+/// Вес явности итога документа по тексту строки: явный «Всего по
+/// смете»/«Итого по смете» (3) не должен затираться голым «Итого» (1) или
+/// «по объектной смете» (2) из следующего блока того же PDF (sm_id:
+/// локальная смета + объектный сметный расчёт)
+fn doc_total_row_weight(joined: &str) -> u8 {
+    let l = joined.to_lowercase();
+    let sq: String = l.chars().filter(|c| !c.is_whitespace()).collect();
+    if l.contains("по объектн") || sq.contains("пообъектн") {
+        return 2;
+    }
+    if l.contains("по смете") || sq.contains("посмете") {
+        return 3;
+    }
+    1
+}
+
 fn mark_doc_totals(rows: &[DocRow]) -> Vec<bool> {
     let mut out = vec![false; rows.len()];
     for i in 0..rows.len() {
@@ -1809,6 +1827,12 @@ struct Parser {
     /// хвост «Итоги по смете:» пошёл: голые «Итого N» — бегущие итоги
     /// ДОКУМЕНТА, а строки разбивки по видам работ — не позиции
     in_summary_tail: bool,
+    /// вес уже установленного итога документа (см. doc_total_row_weight):
+    /// слабые итоги не перезаписывают сильные
+    doc_total_w: u8,
+    /// предыдущая строка была НДС-итогом: следующее голое «Всего N» —
+    /// «Всего с НДС» (итог документа), а не итог последнего раздела
+    after_vat: bool,
     /// «Примечания:» прошли — дальше только текст, не смета
     in_notes: bool,
     /// голый номер раздела («2» отдельной строкой) — название ждём ниже
@@ -1889,6 +1913,8 @@ impl Parser {
     }
 
     fn feed_line(&mut self, row: DocRow) {
+        // «Всего с НДС» только сразу после НДС; другая строка гасит флаг
+        let after_vat = std::mem::take(&mut self.after_vat);
         let joined = row.joined();
         if joined.trim().is_empty() {
             return;
@@ -1937,6 +1963,14 @@ impl Parser {
                 } else {
                     kind0
                 };
+                if after_vat
+                    && kind == TotalKind::Section
+                    && bare_total_line(&lower)
+                {
+                    // «НДС 18% → ВСЕГО N» (вне сетки): «Всего с НДС» —
+                    // итог документа, а не последнего раздела
+                    kind = TotalKind::DocWithVat;
+                }
                 if kind == TotalKind::Section
                     && self.in_summary_tail
                     && bare_total_line(&lower)
@@ -2070,6 +2104,9 @@ impl Parser {
     }
 
     fn feed_columnar(&mut self, row: DocRow) {
+        // «Всего с НДС» имеет смысл только СРАЗУ после строки НДС; любая
+        // другая строка гасит флаг (устанавливается в apply_total(Vat))
+        let after_vat = std::mem::take(&mut self.after_vat);
         let joined = row.joined();
         if joined.trim().is_empty() {
             return;
@@ -2134,6 +2171,15 @@ impl Parser {
             } else {
                 kind0
             };
+            if after_vat
+                && kind == TotalKind::Section
+                && bare_total_line(&row.lower())
+            {
+                // «НДС 18% → ВСЕГО N»: голое «Всего» сразу после НДС —
+                // «Всего с НДС», итог документа (4-30: ВСЕГО 5 392 967,15,
+                // 4-32: 19 893 612,75), а не итог последнего раздела
+                kind = TotalKind::DocWithVat;
+            }
             if kind == TotalKind::Section
                 && self.in_summary_tail
                 && bare_total_line(&row.lower())
@@ -3244,6 +3290,7 @@ impl Parser {
                 self.totals.vat_rate = rate.or(self.totals.vat_rate);
                 if let Some(v) = num {
                     self.totals.vat = Some(mk(v));
+                    self.after_vat = true;
                 }
             }
             TotalKind::DocWithVat => {
@@ -3259,7 +3306,19 @@ impl Parser {
                     self.totals.vat_rate = rate;
                 }
                 if let Some(v) = num {
-                    self.totals.total = Some(mk(v));
+                    // иерархия явности итога: «Всего по смете»(3) сильнее
+                    // «по объектной смете»(2) и голого «Итого»(1). В sm_id
+                    // после «ВСЕГО по смете 401877» идёт блок объектного
+                    // расчёта (ИТОГО 492,667 / НДС 471,80 / ВСЕГО ПО
+                    // ОБЪЕКТНОЙ СМЕТЕ 3092,94) — слабые итоги не затирают
+                    // сильные
+                    let w = doc_total_row_weight(joined);
+                    if w >= self.doc_total_w {
+                        self.doc_total_w = w;
+                        self.totals.total = Some(mk(v));
+                    } else {
+                        dtag("итог-слабый-пропущен", joined);
+                    }
                 }
             }
             TotalKind::Sub => {
@@ -3491,6 +3550,54 @@ mod tests {
         assert!(!bare_total_line("итого с непредвиденными 212817.22"));
         // обычная позиция — не итог
         assert!(!bare_total_line("кладка стен м2 1200 300 000"));
+    }
+
+    #[test]
+    fn explicit_total_beats_later_bare_itogo() {
+        // sm_id: локальная смета (ВСЕГО по смете 401877) + объектный
+        // расчёт (ИТОГО 492,667 / НДС 471,80 / ВСЕГО ПО ОБЪЕКТНОЙ СМЕТЕ
+        // 3092,94) — голое «ИТОГО» и «по объектной» не затирают явный итог
+        let doc = parse_document(vec![
+            row(&[("Раздел 1. ФУНДАМЕНТЫ", 0)], false),
+            row(
+                &[("ФЕР05-01-011-01 Погружение свай (1 т)", 0), ("1,764", 3), ("14623", 9)],
+                true,
+            ),
+            row(&[("Итого по разделу 1 ФУНДАМЕНТЫ", 0), ("58437", 9)], true),
+            row(&[("ВСЕГО по смете", 0), ("401877", 9)], true),
+            row(
+                &[("ИТОГО", 0), ("464,60", 7), ("17,34", 8), ("0,66", 9), ("492,667", 11)],
+                true,
+            ),
+            row(&[("НДС = 18%", 0), ("471,80", 11)], true),
+            row(&[("ВСЕГО ПО ОБЪЕКТНОЙ СМЕТЕ", 0), ("3092,94", 11)], true),
+        ]);
+        let t = doc.totals.total.expect("итог документа");
+        assert_eq!(t.value, 401877.0);
+        let v = doc.totals.vat.expect("НДС");
+        assert_eq!(v.value, 471.8);
+    }
+
+    #[test]
+    fn bare_total_after_vat_is_doc_with_vat() {
+        // 4-30/4-32: «НДС 18% …» → «ВСЕГО …» — «Всего с НДС», итог
+        // документа, а не итог последнего раздела (раньше 19 893 612,75
+        // прилипало к разделу «Фундамент»)
+        let doc = parse_document(vec![
+            row(&[("Раздел 1. Фундамент", 0)], false),
+            row(
+                &[("ФЕР 01-01-001-01 Позиция", 0), ("2", 3), ("100", 8), ("200", 9)],
+                true,
+            ),
+            row(&[("Итого по разделу 1 Фундамент", 0), ("200", 9)], true),
+            row(&[("НДС 18%", 0), ("36", 11)], true),
+            row(&[("ВСЕГО", 0), ("236", 11)], true),
+        ]);
+        assert_eq!(doc.totals.vat.as_ref().unwrap().value, 36.0);
+        let tw = doc.totals.total_with_vat.expect("всего с НДС");
+        assert_eq!(tw.value, 236.0);
+        // разделу «Фундамент» ВСЕГО не прилипает
+        assert_eq!(doc.sections[0].total.as_ref().unwrap().value, 200.0);
     }
 
     #[test]
