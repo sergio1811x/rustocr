@@ -95,14 +95,44 @@ pub fn validate(doc: &mut EstimateDocument) {
                         Some("документ".to_string()),
                     );
                 } else {
-                    rep.error(
-                        "doc_total_mismatch",
-                        format!(
-                            "Итог сметы {} ≠ Σ итогов разделов {} (разница {:.2} руб.)",
-                            t.value, sum_sections, diff
-                        ),
-                        Some("документ".to_string()),
-                    );
+                    // индексированная смета (ФЕР/ГЭСН в базовых ценах
+                    // 2000/2001 г.): итог переведён в текущие цены
+                    // коэффициентом («Перевод в цены 3 кв. 2012 × 6,15»),
+                    // поэтому итог/Σ ≈ индекс > 1,5 — это не арифметическая
+                    // ошибка, а устройство сметы (smeta-na-stroitelstvo-doma:
+                    // Σ позиций 208 644 → +2% → ×6,15 → +НДС = 1 544 414,6)
+                    let base = sum_sections - vat_v;
+                    let ratio = if base > 0.0 {
+                        t.value / base
+                    } else {
+                        0.0
+                    };
+                    let indexed = doc
+                        .unparsed_lines
+                        .iter()
+                        .any(|l| l.contains("еревод в цены") || l.contains("ндекс"))
+                        || (1.5..30.0).contains(&ratio);
+                    if indexed && ratio > 1.5 {
+                        rep.warn(
+                            "doc_total_indexed",
+                            format!(
+                                "Итог сметы {} ≠ Σ разделов {} (итог в текущих ценах: \
+                                 индексация ×{:.2} к базовым + НДС — сверка с Σ позиций \
+                                 базового уровня неприменима)",
+                                t.value, sum_sections, ratio
+                            ),
+                            Some("документ".to_string()),
+                        );
+                    } else {
+                        rep.error(
+                            "doc_total_mismatch",
+                            format!(
+                                "Итог сметы {} ≠ Σ итогов разделов {} (разница {:.2} руб.)",
+                                t.value, sum_sections, diff
+                            ),
+                            Some("документ".to_string()),
+                        );
+                    }
                 }
             }
         }

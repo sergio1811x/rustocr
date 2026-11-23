@@ -1,7 +1,7 @@
 {
  "pages": 1,
  "sections": 1,
- "positions": 27,
+ "positions": 28,
  "resources": 0,
  "table_rows": 29,
  "unclassified_rows": 0,
@@ -10,14 +10,12 @@
  "total": 1371392.0,
  "vat": null,
  "total_with_vat": null,
- "errors": [
-  "section_total_mismatch"
- ],
+ "errors": [],
  "warnings": [],
  "sections_detail": [
   {
    "title": "Стены дома и бани",
-   "positions": 27,
+   "positions": 28,
    "total": 1371392.0
   }
  ]

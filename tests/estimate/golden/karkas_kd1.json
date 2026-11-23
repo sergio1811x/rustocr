@@ -1,11 +1,11 @@
 {
  "pages": 5,
  "sections": 2,
- "positions": 266,
+ "positions": 286,
  "resources": 0,
  "table_rows": 293,
  "unclassified_rows": 5,
- "qty_price_checked": 13,
+ "qty_price_checked": 17,
  "section_totals_checked": 1,
  "total": 1285613.0,
  "vat": null,
@@ -21,7 +21,7 @@
  "sections_detail": [
   {
    "title": "цена материалов и",
-   "positions": 244,
+   "positions": 264,
    "total": 1285613.0
   },
   {

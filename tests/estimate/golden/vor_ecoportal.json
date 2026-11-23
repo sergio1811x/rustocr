@@ -1,11 +1,11 @@
 {
  "pages": 48,
  "sections": 1,
- "positions": 573,
+ "positions": 578,
  "resources": 0,
  "table_rows": 1186,
- "unclassified_rows": 539,
- "qty_price_checked": 477,
+ "unclassified_rows": 541,
+ "qty_price_checked": 483,
  "section_totals_checked": 1,
  "total": 33961.0,
  "vat": null,
@@ -453,12 +453,18 @@
   "qty_price_mismatch",
   "qty_price_mismatch",
   "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
+  "qty_price_mismatch",
   "unclassified_rows"
  ],
  "sections_detail": [
   {
    "title": "ВЕДОМОСТЬ ОБЪЕМОВ РАБОТ",
-   "positions": 573,
+   "positions": 578,
    "total": 33961.0
   }
  ]

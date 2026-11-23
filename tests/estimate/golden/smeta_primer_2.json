@@ -1,11 +1,11 @@
 {
  "pages": 12,
  "sections": 6,
- "positions": 113,
- "resources": 12,
+ "positions": 118,
+ "resources": 7,
  "table_rows": 224,
  "unclassified_rows": 20,
- "qty_price_checked": 63,
+ "qty_price_checked": 65,
  "section_totals_checked": 6,
  "total": 9569707.87,
  "vat": null,
@@ -55,7 +55,7 @@
   },
   {
    "title": "Прочие работы",
-   "positions": 16,
+   "positions": 21,
    "total": 564863.12
   }
  ]

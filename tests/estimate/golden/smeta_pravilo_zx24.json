@@ -1,18 +1,16 @@
 {
  "pages": 5,
  "sections": 10,
- "positions": 152,
- "resources": 17,
+ "positions": 182,
+ "resources": 0,
  "table_rows": 253,
- "unclassified_rows": 52,
- "qty_price_checked": 103,
+ "unclassified_rows": 39,
+ "qty_price_checked": 129,
  "section_totals_checked": 10,
  "total": 5358904.13,
  "vat": null,
  "total_with_vat": null,
  "errors": [
-  "doc_total_mismatch",
-  "section_total_mismatch",
   "section_total_mismatch",
   "section_total_mismatch",
   "section_total_mismatch",
@@ -23,58 +21,61 @@
   "section_total_mismatch"
  ],
  "warnings": [
+  "auto_repair",
+  "auto_repair",
+  "doc_total_excludes_sections",
   "unclassified_rows"
  ],
  "sections_detail": [
   {
-   "title": "ПОЧЕМУ ‹‹ПРАВИЛО››?",
-   "positions": 2,
+   "title": "ПОДГОТОВИТЕЛЬНЫЕ РАБОТЫ, ПОДГОТОВКА ПЛОЩАДКИ (SRZD1)",
+   "positions": 3,
    "total": 90300.0
   },
   {
    "title": "ЗЕМЛЯНЫЕ РАБОТЫ (SRZD2)",
-   "positions": 4,
-   "total": 114480.0
+   "positions": 7,
+   "total": 209837.66
   },
   {
    "title": "УСТРОЙСТВО ФУНДАМЕНТА (SRZD3)",
-   "positions": 18,
+   "positions": 20,
    "total": 1060580.15
   },
   {
    "title": "КЛАДКА НЕСУЩИХ СТЕН, МОНТАЖ ПЕРЕМЫЧЕК, ВЕНТКАНАЛОВ, ВНУТР.ПЕ",
-   "positions": 38,
-   "total": 1049643.82
+   "positions": 45,
+   "total": 1617553.1
   },
   {
    "title": "МОНТАЖ ПЕРЕКРЫТИЯ 1-ГО ЭТАЖА (SRZD8)",
-   "positions": 13,
+   "positions": 15,
    "total": 551688.79
   },
   {
    "title": "МОНТАЖ ПЕРЕКРЫТИЯ 2-ГО ЭТАЖА (SRZD9)",
-   "positions": 20,
-   "total": 395860.38
+   "positions": 23,
+   "total": 557476.44
   },
   {
    "title": "МОНТАЖ СТРОПИЛЬНОЙ СИСТЕМЫ (SRZD11)",
-   "positions": 8,
-   "total": 312736.19
+   "positions": 11,
+   "total": 548449.36
   },
   {
    "title": "Стоимость материалов, машин и",
-   "positions": 18,
+   "positions": 19,
    "total": 723018.63
   },
   {
    "title": "ОТДЕЛКА ВНЕШНИХ СТЕН и ЦОКОЛЯ (SRZD15)",
-   "positions": 23,
+   "positions": 26,
    "total": 1771852.5
   },
   {
    "title": "МОНТАЖ ВОДОСТОЧНОЙ СИСТЕМЫ, ПОДШИВКА СВЕСОВ (SRZD16)",
-   "positions": 8,
-   "total": 133661.42
+   "positions": 13,
+   "total": 234386.17
   }
  ]
 }

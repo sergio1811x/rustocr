@@ -55,9 +55,19 @@ pub fn parse_number(s: &str) -> Option<f64> {
             }
         }
     }
-    let t: String = raw.chars().filter(|c| *c != ' ' && *c != '\u{a0}').collect();
+    let mut t: String = raw.chars().filter(|c| *c != ' ' && *c != '\u{a0}').collect();
     if t.is_empty() {
         return None;
+    }
+    // ведущий минус — отрицательное число (ФССЦ-строки возврата
+    // материалов в ГС/ФЕР: «-142,4» × 5,71 = «-813»): только ОДИН
+    // минус в начале, «--5» и «5-3» — не числа
+    let negative = t.starts_with('-');
+    if negative {
+        t = t[1..].to_string();
+        if t.is_empty() {
+            return None;
+        }
     }
     let mut seps: Vec<usize> = Vec::new();
     for (i, c) in t.char_indices() {
@@ -71,7 +81,8 @@ pub fn parse_number(s: &str) -> Option<f64> {
         }
     }
     if seps.is_empty() {
-        return t.parse::<f64>().ok().filter(|v| v.is_finite());
+        let v = t.parse::<f64>().ok().filter(|v| v.is_finite());
+        return v.map(|v| if negative { -v } else { v });
     }
     let last = *seps.last().unwrap();
     if last == t.len() - 1 {
@@ -90,16 +101,25 @@ pub fn parse_number(s: &str) -> Option<f64> {
             let mut norm = int_part;
             norm.push('.');
             norm.push_str(after_last);
-            return norm.parse::<f64>().ok();
+            return norm
+                .parse::<f64>()
+                .ok()
+                .map(|v| if negative { -v } else { v });
         }
         // «1.234.567» — оба разрядные
         if after_first.len() == 3 && after_last.len() == 3 {
             let int_part: String = t.chars().filter(|c| c.is_ascii_digit()).collect();
-            return int_part.parse::<f64>().ok();
+            return int_part
+                .parse::<f64>()
+                .ok()
+                .map(|v| if negative { -v } else { v });
         }
         return None;
     }
-    t.replace(',', ".").parse::<f64>().ok()
+    t.replace(',', ".")
+        .parse::<f64>()
+        .ok()
+        .map(|v| if negative { -v } else { v })
 }
 
 /// Канонизация единицы измерения: «м2»/«М²» → «м²», «шт.» → «шт»,
@@ -556,7 +576,25 @@ fn is_header_row(row: &DocRow) -> bool {
         "маш", "мех", "осн", "з/п", "3/п",
     ];
     let hits = marks.iter().filter(|m| lower.contains(*m)).count();
-    hits >= 3
+    if hits >= 3 {
+        return true;
+    }
+    // нижние уровни многострочных шапок ГС/ФЕР (sm_id): третья-четвёртая
+    // строка блока — короткие обрывки «оплаты | в т.ч. | риалы | Всего |
+    // труда | на», где «Всего» — заголовок колонки ИТОГА «Общей
+    // стоимости». Без этого роль Total получает только «всего» из блока
+    // «Стоимость единицы» — и позиция берёт ЦЕНУ вместо итога
+    // (2 411,06 вместо 7 161 = 2,97 × 2 411,06)
+    if hits >= 1 && lower.contains("всего") {
+        let words: Vec<&str> = lower.split_whitespace().collect();
+        let headerish = words
+            .iter()
+            .all(|w| w.chars().count() <= 10 || w.contains("т.ч."));
+        if headerish && !lower.contains(':') {
+            return true;
+        }
+    }
+    false
 }
 
 /// Промежуточные сводки Гранд-Сметы в конце документа: «Итого прямые
@@ -741,6 +779,14 @@ fn totals_kind_text(lower: &str) -> Option<(TotalKind, Option<f64>)> {
             || lz.contains("итогоподому")
             || lz.contains("всегоподому")
         {
+            return Some((TotalKind::Doc, None));
+        }
+        // «1 ВСЕГО по комплектации «БАЗОВАЯ»: 3 008 563» — нарастающий
+        // итог ПАКЕТА (БАЗОВАЯ/СТАНДАРТ/КОМФОРТ = три альтернативные
+        // комплектации одного дома, newizba): не итог текущего раздела
+        // — иначе 3 млн затирают итог «Стропильной системы» (585 588).
+        // Последний пакет покрывает все разделы → итог документа
+        if lz.contains("покомплектации") || lz.contains("комплектации") {
             return Some((TotalKind::Doc, None));
         }
         return Some((TotalKind::Section, None)); // раздел или документ — решает контекст
@@ -1214,10 +1260,48 @@ fn totals_name_hint(joined: &str) -> Option<String> {
     Some(hint)
 }
 
+/// Полная арифметика позиции в строке: какие-то два числа строки
+/// перемножаются в третье (qty × price = total), числа собираем и из
+/// слипшихся ячеек («4,00 2000,00» — parse_number их не видит).
+/// Только для строк БЕЗ кода ресурса: «КИРПИЧ | 1.1-1-1234 | 40 000 |
+/// 15 | 600 000» — ресурс материалов с полной арифметикой, а
+/// newizba-строка «Расходы на перевозку… | рейс | 4,00 | 2000,00 |
+/// 8 000,00» (где «перевозку» ложно матчится как Transport) — позиция.
+fn row_has_position_arith(row: &DocRow) -> bool {
+    if row
+        .cells
+        .iter()
+        .any(|(_, _, t)| resource_code(t.trim()).is_some())
+    {
+        return false;
+    }
+    let mut vals: Vec<f64> = Vec::new();
+    for (_, _, t) in &row.cells {
+        for tok in t.split_whitespace() {
+            if let Some(v) = parse_number(tok) {
+                vals.push(v);
+            }
+        }
+    }
+    vals.len() >= 3
+        && vals.iter().enumerate().any(|(i, &a)| {
+            vals.iter().enumerate().any(|(j, &b)| {
+                if i == j || a <= 0.0 || b <= 0.0 {
+                    return false;
+                }
+                vals.iter().any(|&t| {
+                    t > 0.0 && (a * b - t).abs() <= 0.02 * t + 0.5 && !(a == 1.0 && b == t)
+                })
+            })
+        })
+}
+
 /// Голый заголовок раздела: короткая строка без цифр и двоеточий («Кладка»).
 fn bare_title(joined: &str) -> bool {
     title_like(joined) && !joined.trim().chars().any(|c| c.is_ascii_digit())
 }
+
+
 
 /// Заголовок НОВОГО документа в составном файле (ЛСР + ОСР + приложение):
 /// «Объектный сметный расчёт…», «Локальная смета…» — хвост «Итоги по
@@ -1837,6 +1921,10 @@ struct Parser {
     in_notes: bool,
     /// голый номер раздела («2» отдельной строкой) — название ждём ниже
     pending_section_no: Option<u32>,
+    /// висящее название позиции (newizba): не-табличная строка с заглавной
+    /// («Бетонирование монолитных площадочных фундаментов из»), чьи данные
+    /// придут СЛЕДУЮЩЕЙ табличной строкой из единицы и чисел
+    pending_name: Option<String>,
 }
 
 impl Parser {
@@ -2037,11 +2125,25 @@ impl Parser {
                 self.after_total = true;
                 return;
             }
-            // голый заголовок после итога — новый раздел («Кладка», «Монолит»)
-            if self.after_total && bare_title(&joined) {
+            // голый заголовок после итога — новый раздел («Кладка», «Монолит»).
+            // В хвосте «Итоги по смете:» голые заголовки — строки сводки
+            // по видам работ (sm_id: «Строительные металлические
+            // конструкции» между «Полы 71893» и «Теплоизоляционные
+            // работы 116720»): раздел из них — фантом, а строки сводки
+            // после него становятся позициями. Оставляем в хвосте
+            if self.after_total
+                && !self.in_summary_tail
+                && bare_title(&joined)
+            {
                 dtag("раздел-голый", &joined);
                 self.start_section(None, joined.trim().to_string(), false);
                 self.after_total = false;
+                return;
+            }
+            // тот же случай В хвосте — просто строка сводки
+            if self.in_summary_tail && bare_title(&joined) {
+                dtag("хвост-сводки-заголовок", &joined);
+                self.push_unparsed(&joined, false);
                 return;
             }
             // промежуточные сводки финальных страниц ГС вне сетки — тоже
@@ -2092,9 +2194,45 @@ impl Parser {
                 dtag("продолж-е", &joined);
                 return;
             }
+            // продолжение ВИСЯЩЕГО названия (newizba): «из» → «готового
+            // бетона, с подачей через лоток…» — приклеиваем к буферу
+            if !self.after_total
+                && self.pending_name.is_some()
+                && self.is_text_continuation(&joined, &lower)
+            {
+                let has_numbers = joined.chars().any(|c| c.is_ascii_digit());
+                if !has_numbers {
+                    if let Some(name) = self.pending_name.as_mut() {
+                        name.push(' ');
+                        name.push_str(joined.trim());
+                    }
+                }
+                dtag("имя-висит-продолж", &joined);
+                return;
+            }
             // мета-поля в хвосте документа («Подрядчик:…», «Заказчики:…»)
             if meta_field(&lower).is_some() {
                 self.feed_meta_line(&joined);
+                return;
+            }
+            // ВИСЯЩЕЕ НАЗВАНИЕ ПОЗИЦИИ (newizba): не-табличная строка с
+            // заглавной, не раздел/итог/мета — имя двухстрочной позиции.
+            // Данные придут следующей табличной строкой из единицы и чисел.
+            // Прежнюю позицию закрываем: её продолжения закончились.
+            if self.saw_table_row
+                && !self.after_total
+                && !self.in_summary_tail
+                && joined.chars().any(|c| c.is_alphabetic())
+                && !joined.contains(':')
+                && joined.trim().chars().next().is_some_and(|c| c.is_uppercase())
+                && !joined.trim().ends_with('.')
+                && bare_title(&joined)
+                && section_title_ok(&joined)
+                && self.cur_position.is_some()
+            {
+                self.flush_position();
+                self.pending_name = Some(joined.trim().to_string());
+                dtag("имя-висит", &joined);
                 return;
             }
         }
@@ -2339,6 +2477,53 @@ impl Parser {
                 self.cur_position = Some(pos);
                 return;
             }
+            // 4а) ДАННЫЕ висящего названия (newizba): табличная строка без
+            // текстовой ячейки, но с единицей («м³ | 40,1 | 0,00 | …
+            // | 92264,50 | 92264,50») — вторая строка двухстрочной
+            // позиции. Открываем позицию с накопленным именем.
+            // Единица может слипнуться с числами в одной ячейке
+            // («м³ 40,1 0,00»): ищем как префикс, числа — из всех ячеек.
+            if let Some(name) = self.pending_name.take() {
+                let unit_cell = row.cells.iter().find_map(|(_, _, t)| {
+                    let t = t.trim();
+                    // «м³ 40,1 0,00» → «м³», «м³» → «м³»
+                    let head: String = t
+                        .chars()
+                        .take_while(|c| !c.is_ascii_digit() && *c != ' ')
+                        .collect();
+                    let head = head.trim();
+                    if is_unit(head) {
+                        Some((head.to_string(), t))
+                    } else {
+                        None
+                    }
+                });
+                let nums = row.numbers();
+                if let Some((unit, _)) = unit_cell {
+                    if nums.len() >= 2 {
+                        let (qty, price, total) = self.pick_position_numbers(&nums, false);
+                        dtag("позиция-из-висячего-имени", &joined);
+                        self.after_total = false;
+                        self.flush_position();
+                        self.cur_position = Some(Position {
+                            line: None,
+                            cipher: None,
+                            name,
+                            unit: Some(unit),
+                            quantity: qty,
+                            price,
+                            total,
+                            resources: Vec::new(),
+                            pages: vec![row.page],
+                            raw: vec![row.joined()],
+                            raw_main: 1,
+                        });
+                        return;
+                    }
+                }
+                // имя не дождалось чисел — вернём, строка обработается ниже
+                self.pending_name = Some(name);
+            }
         }
 
         // 5а) хвост «Итоги по смете:»: разбивка по видам работ и блок
@@ -2411,6 +2596,13 @@ impl Parser {
             return false;
         }
         if resource_kind(&row.lower()).is_some() {
+            return false;
+        }
+        // строка с полной арифметикой позиции (qty × price = total) —
+        // НОВАЯ позиция, а не перенос названия: «индивидуальной защиты
+        // (перчатки, респираторы… | 1,00 | 15000,00 | … | 15000,00»
+        // (newizba) при совпавшей колонке имени
+        if row_has_position_arith(row) {
             return false;
         }
         // списочная строка «труба для заезда | 54000»: одно число,
@@ -2605,6 +2797,21 @@ impl Parser {
                 }
             }
         }
+        // ТРЁХКОЛОННОЧНЫЙ итог (newizba): «Итого по разделу: 372 169,65 |
+        // 197 749,84 | 569 919» = материалы + работы = всего. Два кандидата
+        // в сумме дают третий (±округления строк) — итог это СУММА.
+        // Проверяем ДО якоря: Σ позиций бывает занижена (потерянные
+        // двухстрочные позиции) и якорь «легализует» колонку «материалы»
+        let mut cs = candidates.clone();
+        cs.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        if let (Some(&small), Some(&mid), Some(&large)) =
+            (cs.first(), cs.get(cs.len() - 2), cs.last())
+        {
+            let tol = 1.0 + 0.005 * large;
+            if (small + mid - large).abs() <= tol && large > 0.0 {
+                return Some(large);
+            }
+        }
         // ни один кандидат не похож на СВОЙ якорь (мусор от скана) — прежний
         // путь. Порог меряем от якоря пары: иначе крупный якорь Σ+НДС
         // «легализует» мусорный кандидат, ближайший к малому якорю Σ
@@ -2739,6 +2946,51 @@ impl Parser {
             .iter()
             .any(|(_, _, t)| t.trim().chars().filter(|c| c.is_alphabetic()).count() >= 2);
         if !has_text_cell && cipher.is_none() {
+            // ДВУХСТРОЧНАЯ позиция (newizba): название висит строкой выше
+            // («Бетонирование монолитных площадочных фундаментов из…»,
+            // распознано как продолжение), а эта строка — данные:
+            // «м³ | 40,1 | 0,00 | 2300,00 | 0,00 | 92264,50 | 92264,50».
+            // Единица + ≥2 числа и числовая колонка-итог совпадает с
+            // предыдущей позицией → это ВТОРАЯ строка данных текущей
+            // позиции, а не мусор. Сливаем в текущую позицию.
+            let merge_into_current = (|| {
+                let pos = self.cur_position.as_mut()?;
+                let has_unit = row.cells.iter().any(|(_, _, t)| is_unit(t.trim()));
+                let nums = row.numbers();
+                let total_col_ok = nums
+                    .last()
+                    .map(|(c, _, _)| self.prev_number_cols.contains(c))
+                    .unwrap_or(false);
+                if !(has_unit && nums.len() >= 2 && total_col_ok) {
+                    return None;
+                }
+                Some((nums, pos.raw.len()))
+            })();
+            if let Some((nums, raw_len)) = merge_into_current {
+                let (qty, price, total) = self.pick_position_numbers(&nums, false);
+                let pos = self.cur_position.as_mut().unwrap();
+                if let Some(q) = qty {
+                    pos.quantity = Some(q);
+                }
+                if let Some(p) = price {
+                    pos.price = Some(p);
+                }
+                if let Some(t) = total {
+                    pos.total = Some(t);
+                }
+                if pos.unit.is_none() {
+                    if let Some((_, _, t)) = row.cells.iter().find(|(_, _, t)| is_unit(t.trim())) {
+                        pos.unit = Some(normalize_unit(t));
+                    }
+                }
+                if pos.raw.len() == raw_len {
+                    pos.raw.push(row.joined());
+                }
+                if pos.pages.last() != Some(&row.page) {
+                    pos.pages.push(row.page);
+                }
+                return None; // не новая позиция — дополнение текущей
+            }
             return None;
         }
 
@@ -2763,7 +3015,10 @@ impl Parser {
             }
             // коммерческая таблица без № и шифров: [наименование | ед | числа…]
             // (и журнал расходов: дата | поставщик | сумма | комментарий)
-            (None, None) if resource_kind(&row.lower()).is_none() => {
+            (None, None)
+                if resource_kind(&row.lower()).is_none()
+                    || row_has_position_arith(row) =>
+            {
                 let last_num_col = row.numbers().last().map(|(c, _, _)| *c);
                 let has_code = row.cells.iter().enumerate().any(|(i, (col, _, t))| {
                     resource_code(t).is_some()
@@ -2890,10 +3145,44 @@ impl Parser {
         // суммы материалов/работ тоже помечены Total, позиционный итог —
         // крайний правый
         let total_by_role = |numbers: &[(usize, f64, String)]| -> Option<Num> {
-            let mut last = None;
-            for (col, v, raw) in numbers {
-                if self.role_at(*col) == Some(Role::Total) && *v != 0.0 {
-                    last = Some(Num::new(*v, raw.clone()));
+            let totals: Vec<&(usize, f64, String)> = numbers
+                .iter()
+                .filter(|(c, v, _)| self.role_at(*c) == Some(Role::Total) && *v != 0.0)
+                .collect();
+            let last = totals.last().map(|(_, v, r)| Num::new(*v, r.clone()));
+            // многоуровневые шапки ГС/ФЕР (sm_id): правее денежных Total
+            // стоят Total-колонки ТРУДОЁМКОСТИ («всего» чел.-ч) — итог в
+            // десятки раз меньше количеств и цен строки. Если самый
+            // правый Total меньше какого-либо числа строки, а другой
+            // Total согласован арифметикой (qty × price ≈ итог) — берём
+            // согласанный: 7161 = 2,97 × 2411,06, а не 66,83 чел.-ч
+            let Some((_, lv, _)) = totals.last() else {
+                return None;
+            };
+            let too_small = numbers.iter().any(|(_, a, _)| *a > *lv && *a > 1.0);
+            if too_small {
+                let mut best: Option<Num> = None;
+                for (_, v, r) in &totals {
+                    // тривиальные пары не считаются доказательством:
+                    // a×1=a (строка с колонкой «1») легализует САМО
+                    // число как итог — цена 10 688,2 бралась вместо
+                    // итога 374 = 0,035 × 10 688,2 (sm_id, ПОЛЫ)
+                    let consistent = numbers.iter().any(|(_, a, _)| {
+                        *a > 0.0
+                            && (a - v).abs() > 1e-9
+                            && numbers.iter().any(|(_, b, _)| {
+                                *b > 0.0
+                                    && *b != 1.0
+                                    && (b - v).abs() > 1e-9
+                                    && (a * b - v).abs() <= 0.02 * v + 1.0
+                            })
+                    });
+                    if consistent && best.as_ref().map(|b| v > &b.value).unwrap_or(true) {
+                        best = Some(Num::new(*v, r.clone()));
+                    }
+                }
+                if let Some(b) = best {
+                    return Some(b);
                 }
             }
             last
@@ -2909,6 +3198,16 @@ impl Parser {
             None
         };
         let qty = by_role(Role::Qty);
+        if std::env::var("RUSTOCR_ESTIMATE_DEBUG").as_deref() == Ok("3") {
+            eprintln!(
+                "[est:pick] roles={:?} numbers={:?}",
+                self.roles,
+                numbers
+                    .iter()
+                    .map(|(c, v, _)| (*c, *v))
+                    .collect::<Vec<_>>()
+            );
+        }
         let price = price_by_role(numbers);
         let total = total_by_role(numbers);
         if qty.is_some() || price.is_some() || total.is_some() {
@@ -3014,6 +3313,12 @@ impl Parser {
         let joined = row.joined();
         let lower = joined.to_lowercase();
         let numbers = row.numbers();
+
+        // строка с ПОЛНОЙ арифметикой позиции — это позиция, а не ресурс
+        // (арифметика не видна по numbers из-за слипшихся ячеек)
+        if row_has_position_arith(row) {
+            return None;
+        }
 
         // ключевой ресурс («Затраты труда рабочих | чел.-ч | 123,45»)
         if let Some(kind) = resource_kind(&lower) {
@@ -3401,6 +3706,24 @@ impl Parser {
             TotalKind::Section => {
                 if let Some(v) = num {
                     if let Some(sec) = self.cur_section.as_mut() {
+                        // повторный «Итого по разделу» внутри того же раздела
+                        // (newizba: мини-блок «Вынос мусора» 32 000 после
+                        // основного итога 585 588) НЕ затирает уже
+                        // сошедшийся итог: |итог − Σ позиций| ≤ 1%
+                        if let Some(prev) = &sec.total {
+                            let sum: f64 = sec
+                                .positions
+                                .iter()
+                                .chain(sec.subsections.iter().flat_map(|s| s.positions.iter()))
+                                .filter_map(|p| p.total.as_ref().map(|t| t.value))
+                                .sum();
+                            let converged =
+                                (prev.value - sum).abs() <= 0.01 * sum.max(prev.value);
+                            if converged && (v - sum).abs() > 0.01 * sum.max(v) {
+                                dtag("итог-раздела-не-трогаем", joined);
+                                return;
+                            }
+                        }
                         sec.total = Some(mk(v));
                     } else if let Some(last) = self.sections.last_mut() {
                         last.total = Some(mk(v));
@@ -3508,6 +3831,40 @@ mod tests {
             columnar,
             cells: cells.iter().map(|(t, c)| (*c, 1, t.to_string())).collect(),
         }
+    }
+
+    #[test]
+    fn header_row_multilevel_gs_leaf() {
+        // нижние уровни многострочных шапок ГС/ФЕР (sm_id): строка
+        // листьев «оплаты | в т.ч. | риалы | Всего | труда | …» —
+        // «Всего» здесь заголовок колонки ИТОГА «Общей стоимости»
+        let c = row(
+            &[
+                ("оплаты", 7),
+                ("в т.ч.", 9),
+                ("риалы", 11),
+                ("Всего", 13),
+                ("труда", 14),
+                ("в т.ч.", 16),
+                ("риалы", 18),
+                ("на", 19),
+            ],
+            true,
+        );
+        assert!(is_header_row(&c), "строка листьев шапки должна быть шапкой");
+        // learn_roles даёт col13 роль Total
+        let mut p = Parser::default();
+        p.learn_roles(&c);
+        assert_eq!(p.role_at(13), Some(Role::Total));
+        // четвёртая строка шапки — тоже лист («оплаты | оплаты | всего»)
+        let d = row(&[("оплаты", 9), ("оплаты", 16), ("всего", 21)], true);
+        assert!(is_header_row(&d));
+        // но строка позиции с «всего» в тексте шапкой быть не должна
+        let not_hdr = row(
+            &[("Устройство кровли всего за 3 дня", 2), ("1", 5), ("2000", 8)],
+            true,
+        );
+        assert!(!is_header_row(&not_hdr));
     }
 
     #[test]
@@ -3750,6 +4107,14 @@ mod tests {
         assert_eq!(parse_number("10 0000"), Some(100000.0));
         assert_eq!(parse_number("2781 031"), Some(2781031.0));
         assert_eq!(parse_number("13 560,0"), Some(13560.0));
+        // отрицательные числа (ФССЦ-строки возврата материалов в ГС/ФЕР)
+        assert_eq!(parse_number("-142,4"), Some(-142.4));
+        assert_eq!(parse_number("-813"), Some(-813.0));
+        assert_eq!(parse_number("-1 234,56"), Some(-1234.56));
+        // мусор с минусом — не числа
+        assert_eq!(parse_number("--5"), None);
+        assert_eq!(parse_number("5-3"), None);
+        assert_eq!(parse_number("-"), None);
     }
 
     #[test]

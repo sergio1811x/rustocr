@@ -12,7 +12,6 @@
  "total_with_vat": null,
  "errors": [
   "doc_total_mismatch",
-  "section_total_mismatch",
   "section_total_mismatch"
  ],
  "warnings": [
@@ -71,7 +70,7 @@
   {
    "title": "Проектные и изыскательские работы",
    "positions": 2,
-   "total": 47006.03
+   "total": 523.7
   }
  ]
 }

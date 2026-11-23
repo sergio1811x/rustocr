@@ -1,11 +1,11 @@
 {
  "pages": 5,
  "sections": 6,
- "positions": 131,
- "resources": 4,
+ "positions": 137,
+ "resources": 1,
  "table_rows": 181,
- "unclassified_rows": 40,
- "qty_price_checked": 5,
+ "unclassified_rows": 37,
+ "qty_price_checked": 6,
  "section_totals_checked": 1,
  "total": 63655.0,
  "vat": null,
@@ -40,7 +40,7 @@
   },
   {
    "title": "Монолитные работы",
-   "positions": 22,
+   "positions": 23,
    "total": null
   },
   {
@@ -50,12 +50,12 @@
   },
   {
    "title": "Устройство стяжки пола",
-   "positions": 19,
+   "positions": 21,
    "total": null
   },
   {
    "title": "Кровля",
-   "positions": 30,
+   "positions": 33,
    "total": 63655.0
   }
  ]

@@ -1,7 +1,7 @@
 {
  "pages": 2,
  "sections": 1,
- "positions": 19,
+ "positions": 20,
  "resources": 1,
  "table_rows": 47,
  "unclassified_rows": 13,
@@ -28,13 +28,14 @@
   "position_no_numbers",
   "position_no_numbers",
   "position_no_numbers",
+  "position_no_numbers",
   "section_total_missing",
   "unclassified_rows"
  ],
  "sections_detail": [
   {
    "title": "Ремонт дымоходов с использованием гибких полимер рных руково",
-   "positions": 19,
+   "positions": 20,
    "total": null
   }
  ]

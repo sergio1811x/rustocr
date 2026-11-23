@@ -1,8 +1,8 @@
 {
  "pages": 7,
  "sections": 2,
- "positions": 36,
- "resources": 6,
+ "positions": 38,
+ "resources": 4,
  "table_rows": 146,
  "unclassified_rows": 76,
  "qty_price_checked": 32,
@@ -23,12 +23,12 @@
  "sections_detail": [
   {
    "title": "ремонт трибун",
-   "positions": 19,
+   "positions": 20,
    "total": 39527.62
   },
   {
    "title": "о с в е щ е н и е",
-   "positions": 17,
+   "positions": 18,
    "total": 176857.95
   }
  ]

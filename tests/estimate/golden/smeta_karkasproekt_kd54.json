@@ -1,11 +1,11 @@
 {
  "pages": 1,
  "sections": 1,
- "positions": 26,
+ "positions": 29,
  "resources": 1,
  "table_rows": 34,
- "unclassified_rows": 4,
- "qty_price_checked": 22,
+ "unclassified_rows": 2,
+ "qty_price_checked": 25,
  "section_totals_checked": 1,
  "total": 894742.0,
  "vat": null,
@@ -19,7 +19,7 @@
  "sections_detail": [
   {
    "title": "Стоимость",
-   "positions": 26,
+   "positions": 29,
    "total": 894742.0
   }
  ]

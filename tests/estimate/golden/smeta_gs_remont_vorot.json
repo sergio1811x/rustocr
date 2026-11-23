@@ -4,17 +4,15 @@
  "positions": 19,
  "resources": 0,
  "table_rows": 60,
- "unclassified_rows": 20,
- "qty_price_checked": 3,
+ "unclassified_rows": 19,
+ "qty_price_checked": 12,
  "section_totals_checked": 0,
  "total": 495942.25,
  "vat": 75652.21,
  "total_with_vat": null,
- "errors": [
-  "doc_total_mismatch"
- ],
+ "errors": [],
  "warnings": [
-  "auto_repair",
+  "doc_total_indexed",
   "section_total_missing",
   "section_total_missing",
   "section_total_missing",

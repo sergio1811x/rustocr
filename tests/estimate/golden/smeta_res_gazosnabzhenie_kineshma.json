@@ -1,11 +1,11 @@
 {
  "pages": 11,
  "sections": 2,
- "positions": 104,
- "resources": 76,
+ "positions": 126,
+ "resources": 59,
  "table_rows": 261,
- "unclassified_rows": 43,
- "qty_price_checked": 98,
+ "unclassified_rows": 42,
+ "qty_price_checked": 103,
  "section_totals_checked": 0,
  "total": 93442.0,
  "vat": null,
@@ -26,12 +26,12 @@
  "sections_detail": [
   {
    "title": "Земляные работы",
-   "positions": 8,
+   "positions": 10,
    "total": null
   },
   {
    "title": "Трубопроводы",
-   "positions": 96,
+   "positions": 116,
    "total": null
   }
  ]

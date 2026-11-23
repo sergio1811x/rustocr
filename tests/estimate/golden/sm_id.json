@@ -1,18 +1,16 @@
 {
  "pages": 13,
- "sections": 10,
- "positions": 118,
- "resources": 2,
+ "sections": 9,
+ "positions": 113,
+ "resources": 0,
  "table_rows": 270,
- "unclassified_rows": 91,
- "qty_price_checked": 9,
- "section_totals_checked": 10,
+ "unclassified_rows": 97,
+ "qty_price_checked": 61,
+ "section_totals_checked": 9,
  "total": 401877.0,
  "vat": 471.8,
  "total_with_vat": null,
  "errors": [
-  "doc_total_mismatch",
-  "section_total_mismatch",
   "section_total_mismatch",
   "section_total_mismatch",
   "section_total_mismatch",
@@ -24,6 +22,7 @@
   "section_total_mismatch"
  ],
  "warnings": [
+  "doc_total_excludes_sections",
   "qty_price_mismatch",
   "qty_price_mismatch",
   "qty_price_mismatch",
@@ -74,13 +73,8 @@
   },
   {
    "title": "ВНУТРЕННЯЯ ОТДЕЛКА",
-   "positions": 4,
+   "positions": 13,
    "total": 10840.0
-  },
-  {
-   "title": "Строительные металлические конструкции",
-   "positions": 14,
-   "total": 431877.0
   }
  ]
 }

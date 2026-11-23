@@ -1,17 +1,16 @@
 {
  "pages": 29,
  "sections": 10,
- "positions": 469,
+ "positions": 470,
  "resources": 7,
  "table_rows": 867,
  "unclassified_rows": 90,
- "qty_price_checked": 242,
+ "qty_price_checked": 219,
  "section_totals_checked": 10,
  "total": 3653728.0,
  "vat": null,
  "total_with_vat": null,
  "errors": [
-  "doc_total_mismatch",
   "section_total_mismatch",
   "section_total_mismatch",
   "section_total_mismatch",
@@ -24,6 +23,7 @@
   "section_total_mismatch"
  ],
  "warnings": [
+  "doc_total_indexed",
   "position_duplicate",
   "unclassified_rows"
  ],
@@ -50,7 +50,7 @@
   },
   {
    "title": "Отделочные работы",
-   "positions": 95,
+   "positions": 96,
    "total": 63813.0
   },
   {
@@ -66,7 +66,7 @@
   {
    "title": "Металлические конструкции",
    "positions": 8,
-   "total": 61191.0
+   "total": 6304.0
   },
   {
    "title": "Резерв средств на непредвиденные % 1.5 918",

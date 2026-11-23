@@ -1,11 +1,11 @@
 {
  "pages": 7,
  "sections": 7,
- "positions": 265,
- "resources": 7,
+ "positions": 286,
+ "resources": 0,
  "table_rows": 388,
- "unclassified_rows": 51,
- "qty_price_checked": 218,
+ "unclassified_rows": 50,
+ "qty_price_checked": 283,
  "section_totals_checked": 6,
  "total": 8354724.64,
  "vat": null,
@@ -31,27 +31,27 @@
   },
   {
    "title": "Монолитный каркас дома",
-   "positions": 86,
-   "total": 2048389.8
+   "positions": 100,
+   "total": 3382854.8
   },
   {
    "title": "Заполнение каркаса",
-   "positions": 35,
-   "total": 755822.4
+   "positions": 37,
+   "total": 2215429.15
   },
   {
    "title": "Устройство кровли",
-   "positions": 51,
-   "total": 341182.89
+   "positions": 53,
+   "total": 577462.89
   },
   {
    "title": "Устройство гидроизоляции балконов и террас",
    "positions": 34,
-   "total": 222723.49
+   "total": 365118.49
   },
   {
    "title": "Фасад",
-   "positions": 35,
+   "positions": 38,
    "total": 1538126.92
   },
   {

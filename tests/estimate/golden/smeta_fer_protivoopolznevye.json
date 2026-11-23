@@ -1,19 +1,18 @@
 {
  "pages": 8,
  "sections": 6,
- "positions": 74,
+ "positions": 78,
  "resources": 0,
  "table_rows": 146,
- "unclassified_rows": 16,
- "qty_price_checked": 12,
+ "unclassified_rows": 15,
+ "qty_price_checked": 57,
  "section_totals_checked": 0,
  "total": 2396850.17,
  "vat": 365621.21,
  "total_with_vat": null,
- "errors": [
-  "doc_total_mismatch"
- ],
+ "errors": [],
  "warnings": [
+  "doc_total_indexed",
   "section_total_missing",
   "section_total_missing",
   "section_total_missing",
@@ -35,7 +34,7 @@
   },
   {
    "title": "Устройство смотровых и дренажных колодцев",
-   "positions": 25,
+   "positions": 28,
    "total": null
   },
   {
@@ -45,7 +44,7 @@
   },
   {
    "title": "Установка грунтового репера Rp 1",
-   "positions": 12,
+   "positions": 13,
    "total": null
   },
   {

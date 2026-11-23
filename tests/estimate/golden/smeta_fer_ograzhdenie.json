@@ -1,11 +1,11 @@
 {
  "pages": 5,
  "sections": 3,
- "positions": 68,
- "resources": 4,
+ "positions": 70,
+ "resources": 3,
  "table_rows": 109,
  "unclassified_rows": 22,
- "qty_price_checked": 16,
+ "qty_price_checked": 17,
  "section_totals_checked": 1,
  "total": 123867.12,
  "vat": 7445.66,
@@ -39,12 +39,12 @@
   },
   {
    "title": "Ограждение длиной 244 м.п 97 пролетов 4 5 6 7 8 9 10 11",
-   "positions": 57,
+   "positions": 58,
    "total": null
   },
   {
    "title": "Погрузка и перевозка мусора",
-   "positions": 10,
+   "positions": 11,
    "total": 43318.24
   }
  ]

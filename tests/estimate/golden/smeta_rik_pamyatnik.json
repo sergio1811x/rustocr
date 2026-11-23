@@ -4,8 +4,8 @@
  "positions": 118,
  "resources": 2,
  "table_rows": 323,
- "unclassified_rows": 177,
- "qty_price_checked": 36,
+ "unclassified_rows": 169,
+ "qty_price_checked": 30,
  "section_totals_checked": 2,
  "total": null,
  "vat": null,
@@ -15,13 +15,6 @@
   "section_total_mismatch"
  ],
  "warnings": [
-  "auto_repair",
-  "auto_repair",
-  "auto_repair",
-  "auto_repair",
-  "auto_repair",
-  "auto_repair",
-  "auto_repair",
   "auto_repair",
   "auto_repair",
   "auto_repair",
@@ -47,11 +40,6 @@
   "qty_price_mismatch",
   "qty_price_mismatch",
   "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
   "unclassified_rows"
  ],
  "sections_detail": [
@@ -63,7 +51,7 @@
   {
    "title": "Постамент 7543,99 84 341",
    "positions": 74,
-   "total": 20089.0
+   "total": 877.0
   }
  ]
 }

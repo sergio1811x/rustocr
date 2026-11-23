@@ -1,11 +1,11 @@
 {
  "pages": 6,
  "sections": 7,
- "positions": 44,
+ "positions": 46,
  "resources": 0,
  "table_rows": 91,
- "unclassified_rows": 18,
- "qty_price_checked": 31,
+ "unclassified_rows": 17,
+ "qty_price_checked": 35,
  "section_totals_checked": 0,
  "total": 39126.0,
  "vat": 5968.0,
@@ -14,6 +14,7 @@
   "doc_total_mismatch"
  ],
  "warnings": [
+  "qty_price_mismatch",
   "section_total_missing",
   "section_total_missing",
   "section_total_missing",
@@ -31,7 +32,7 @@
   },
   {
    "title": "Канализация - трубы чугунные",
-   "positions": 3,
+   "positions": 4,
    "total": null
   },
   {
@@ -51,7 +52,7 @@
   },
   {
    "title": "Вывоз грунта, мусора",
-   "positions": 0,
+   "positions": 1,
    "total": null
   },
   {
