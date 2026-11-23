@@ -26,8 +26,23 @@ NUM_RE = re.compile(r"\d+(?:[.,]\d+)+|\d+")
 
 
 def join_thousands(t: str) -> str:
-    """«1 082 006,66» → «1082006,66»; соседние колонки не склеиваем."""
-    return re.sub(r"(?<=\d)[ \u00a0](?=\d{3}(?:[.,]|\s|\D|$))", "", t)
+    """«1 082 006,66» → «1082006,66»; соседние числа не склеиваем.
+
+    Отличие от bench/compare_nums.py: дробные части маскируются перед
+    склейкой, иначе «26,00 312,00» (одиночный пробел между колонками в
+    OCR-тексте) превращается в «26,00312,00» и теряет ОБА числа из
+    сравнения. В эталоне pdftotext -layout колонки разведены большими
+    прогалами, поэтому там это не стреляло.
+    """
+    fracs: list[str] = []
+
+    def mask(m: re.Match) -> str:
+        fracs.append(m.group(0))
+        return "\u0001" * len(m.group(0))
+
+    masked = re.sub(r"[.,]\d+", mask, t)
+    joined = re.sub(r"(?<=\d)[ \u00a0](?=\d{3}(?!\d))", "", masked)
+    return re.sub("\u0001+", lambda m: fracs.pop(0), joined)
 
 
 def norm_num(tok: str) -> tuple:
@@ -58,21 +73,25 @@ def main() -> int:
     tot_ref = tot_found = 0
     below = []
     for pdf in sorted(REAL.glob("*.pdf")):
-        doc_json = OUT / (pdf.stem + ".json")
         env = {
             "ORT_DYLIB_PATH": str(REPO / "runtime/libonnxruntime.so.1.20.0"),
             "RUSTOCR_MODELS": str(REPO / "models"),
             "PATH": "/usr/bin:/bin",
         }
         res = subprocess.run(
-            [str(bin_path), str(pdf), "--json", str(doc_json)],
+            [str(bin_path), str(pdf), "--json"],
             env=env, capture_output=True, text=True, timeout=1200,
         )
         if res.returncode != 0:
             print(f"[FAIL] {pdf.name}: код {res.returncode}: {res.stderr.strip()[:200]}")
             below.append(pdf.name)
             continue
-        pages = json.loads(doc_json.read_text()).get("pages", [])
+        try:
+            pages = json.loads(res.stdout).get("pages", [])
+        except json.JSONDecodeError as e:
+            print(f"[FAIL] {pdf.name}: stdout не JSON: {e}")
+            below.append(pdf.name)
+            continue
         ocr_text = "\n".join(p.get("text", "") for p in pages if "text" in p)
         ref = subprocess.run(
             ["pdftotext", "-layout", str(pdf), "-"],
@@ -80,6 +99,10 @@ def main() -> int:
         ).stdout
         ref_c, ocr_c = canon(ref), canon(ocr_text)
         n_ref = sum(ref_c.values())
+        if n_ref == 0:
+            # скан без текстового слоя — эталона нет, сверять нечего
+            print(f"[skip] {pdf.name}: текстовый слой пуст (скан)")
+            continue
         found = sum(min(c, ocr_c.get(n, 0)) for n, c in ref_c.items())
         tot_ref += n_ref
         tot_found += found
