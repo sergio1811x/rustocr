@@ -5,3 +5,4 @@ models/table/slanext_wired.onnx
 models/layout/pp_doclayoutv3.onnx
 bench/baseline/rustocr-baseline-a6c80c6
 bench/__pycache__/
+scripts/__pycache__/
