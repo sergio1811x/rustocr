@@ -14,14 +14,6 @@
   "doc_total_mismatch"
  ],
  "warnings": [
-  "auto_repair",
-  "auto_repair",
-  "auto_repair",
-  "auto_repair",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
   "section_total_missing",
   "unclassified_rows"
  ],

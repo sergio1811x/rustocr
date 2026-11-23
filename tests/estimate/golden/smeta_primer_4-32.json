@@ -9,7 +9,7 @@
  "section_totals_checked": 2,
  "total": null,
  "vat": 3034618.89,
- "total_with_vat": null,
+ "total_with_vat": 19893612.75,
  "errors": [
   "section_total_mismatch",
   "section_total_mismatch"
@@ -146,7 +146,7 @@
   {
    "title": "Фундамент",
    "positions": 238,
-   "total": 19893612.75
+   "total": 16858993.86
   }
  ]
 }

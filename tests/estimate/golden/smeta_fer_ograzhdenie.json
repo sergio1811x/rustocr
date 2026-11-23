@@ -15,7 +15,6 @@
   "section_total_mismatch"
  ],
  "warnings": [
-  "auto_repair",
   "position_duplicate",
   "position_missing",
   "position_no_name",

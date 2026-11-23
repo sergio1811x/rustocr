@@ -14,11 +14,11 @@
   "section_total_mismatch"
  ],
  "warnings": [
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
-  "qty_price_mismatch",
+  "auto_repair",
+  "auto_repair",
+  "auto_repair",
+  "auto_repair",
+  "auto_repair",
   "qty_price_mismatch",
   "qty_price_mismatch",
   "qty_price_mismatch",

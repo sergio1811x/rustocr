@@ -9,7 +9,7 @@
  "section_totals_checked": 3,
  "total": null,
  "vat": 822656.01,
- "total_with_vat": null,
+ "total_with_vat": 5392967.15,
  "errors": [
   "section_total_mismatch",
   "section_total_mismatch",
@@ -115,7 +115,7 @@
   {
    "title": "Электроосвещение",
    "positions": 123,
-   "total": 5392967.15
+   "total": 4570311.14
   }
  ]
 }
