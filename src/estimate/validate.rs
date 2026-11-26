@@ -43,10 +43,16 @@ pub fn validate(doc: &mut EstimateDocument) {
     }
 
     // --- итог документа ---
-    // Σ с ресурсами разделов: НР/СП в выкладках ГС живут на уровне раздела,
-    // и итог сметы = Σ позиций + Σ НР/СП (+НДС) — без них проверка
-    // недосчитывает и падает в ложную ошибку
-    let section_sum_full = |s: &Section| -> f64 {
+    // Считаем ТРИ базы и принимаем любую:
+    //   1) пересчёт из позиций+ресурсов разделов: НР/СП в выкладках ГС
+    //      живут на уровне раздела (sm_id: итог сметы 401 877 =
+    //      Σ позиций + НР/СП);
+    //   2) Σ ЯВНЫХ итогов разделов: в веб-сметах (primer_smeta) «Итого
+    //      по разделу» уже включает ресурсы раздела — пересчёт дал бы
+    //      двойной счёт;
+    //   3) Σ явных итогов − ресурсы: итоги разделов включают НР/СП, а
+    //      итог сметы — только прямые
+    let section_sum_recompute = |s: &Section| -> f64 {
         let mut v = section_sum(s);
         for r in &s.resources {
             if let Some(t) = &r.total {
@@ -55,36 +61,86 @@ pub fn validate(doc: &mut EstimateDocument) {
         }
         v
     };
+    let section_sum_totals = |s: &Section| -> f64 {
+        match &s.total {
+            Some(t) => t.value,
+            None => section_sum_recompute(s),
+        }
+    };
+    let section_sum_totals_minus_res = |s: &Section| -> f64 {
+        match &s.total {
+            Some(t) => {
+                let res: f64 = s
+                    .resources
+                    .iter()
+                    .filter_map(|r| r.total.as_ref().map(|t| t.value))
+                    .sum();
+                t.value - res
+            }
+            None => section_sum_recompute(s),
+        }
+    };
     let sum_sections: f64 = sections
         .iter()
-        .map(|s| section_sum_full(s))
+        .map(|s| section_sum_totals(s))
         .filter(|v| *v > 0.0)
         .sum();
-    let n_with_total = sections.iter().filter(|s| section_sum(s) > 0.0).count();
+    let sum_sections_recompute: f64 = sections
+        .iter()
+        .map(|s| section_sum_recompute(s))
+        .filter(|v| *v > 0.0)
+        .sum();
+    let sum_sections_minus_resources: f64 = sections
+        .iter()
+        .map(|s| section_sum_totals_minus_res(s))
+        .filter(|v| *v > 0.0)
+        .sum();
+    let n_with_total = sections
+        .iter()
+        .filter(|s| s.total.is_some() || section_sum(s) > 0.0)
+        .count();
     if let Some(t) = &doc.totals.total {
         if n_with_total > 0 {
-            let diff = (sum_sections - t.value).abs();
-            // «ВСЕГО по смете» в Гранд-Сметах включает НДС: Σ разделов +
-            // НДС = итог — это не расхождение
+            // итог сметы может считаться от ЛЮБОЙ из баз — если хоть одна
+            // сходится (напрямую или с НДС), расхождения нет
             let vat_v = doc.totals.vat.as_ref().map(|v| v.value).unwrap_or(0.0);
+            let bases = [
+                sum_sections,
+                sum_sections_recompute,
+                sum_sections_minus_resources,
+            ];
+            let any_base_ok = bases
+                .iter()
+                .any(|b| (b - t.value).abs() <= tolerance(t.value));
+            let any_base_vat_ok = bases
+                .iter()
+                .any(|b| (b + vat_v - t.value).abs() <= tolerance(t.value));
+            let diff = (sum_sections - t.value).abs();
             let diff_with_vat = (sum_sections + vat_v - t.value).abs();
-            if diff > tolerance(t.value) && diff_with_vat > tolerance(t.value) {
+            if !any_base_ok && !any_base_vat_ok {
                 // разница может быть итогом раздела(ов), не входящих в
                 // комплектацию («Итого дом в комплектации "КОРОБКА"» без
                 // опциональных разделов вроде перегородок) — это не
-                // арифметическая ошибка
+                // арифметическая ошибка. Проверяем разницу КАЖДОЙ базы
+                // против итогов/Σ-пар позиций разделов (позиции, не явные
+                // итоги: у sm_id diff базы позиций+ресурсов матчится с
+                // позициями раздела-исключения)
                 let sec_totals: Vec<f64> = sections
                     .iter()
                     .map(|s| section_sum(s))
                     .filter(|v| *v > 0.0)
                     .collect();
-                let single = sec_totals.iter().any(|&v| (v - diff).abs() <= tolerance(v));
-                let pair = sec_totals.iter().enumerate().any(|(i, &a)| {
-                    sec_totals[i + 1..]
-                        .iter()
-                        .any(|&b| (a + b - diff).abs() <= tolerance(diff))
+                let excludes = bases.iter().any(|b| {
+                    let d = (b - t.value).abs();
+                    let single = sec_totals.iter().any(|&v| (v - d).abs() <= tolerance(v));
+                    let pair = sec_totals.iter().enumerate().any(|(i, &a)| {
+                        sec_totals[i + 1..]
+                            .iter()
+                            .any(|&b2| (a + b2 - d).abs() <= tolerance(d))
+                    });
+                    single || pair
                 });
-                if single || pair {
+                if excludes {
                     rep.warn(
                         "doc_total_excludes_sections",
                         format!(
@@ -334,17 +390,50 @@ fn validate_section(sec: &Section, rep: &mut ValidationReport) {
         if computed > 0.0 {
             let diff = (t.value - computed).abs();
             if diff > tolerance(t.value) {
-                rep.error(
-                    "section_total_mismatch",
-                    format!(
-                        "Итог раздела «{}» {} ≠ Σ позиций {:.2} (разница {:.2} руб.)",
-                        sec.title, t.value, computed, diff
-                    ),
-                    Some(format!(
-                        "Раздел {}",
-                        sec.number.as_deref().unwrap_or(&sec.title)
-                    )),
-                );
+                // транспортный ресурс блока веб-смет (primer_smeta:
+                // «Транспортные расходы: 4 500,00» = Σ позиций доставки)
+                // ДУБЛИРУЕТ позиции: итог раздела = Σ позиций + ресурсы
+                // БЕЗ транспорта (33 794,24 = 26 361,38 + орг/коорд/НР/
+                // надзор/СП), а с транспортом — двойной счёт
+                let resources_no_transport: f64 = sec
+                    .resources
+                    .iter()
+                    .filter(|r| r.kind != ResourceKind::Transport)
+                    .filter_map(|r| r.total.as_ref().map(|t| t.value))
+                    .sum();
+                let base = if sum_positions > 0.0 {
+                    sum_positions
+                } else {
+                    sub_sums
+                };
+                let computed_no_transport = base + resources_no_transport;
+                let diff2 = (t.value - computed_no_transport).abs();
+                if diff2 <= tolerance(t.value) {
+                    rep.warn(
+                        "section_transport_double_count",
+                        format!(
+                            "Итог раздела «{}» {} = Σ позиций + ресурсы без транспорта \
+                             ({:.2}) — транспортный ресурс дублирует позиции доставки",
+                            sec.title, t.value, computed_no_transport
+                        ),
+                        Some(format!(
+                            "Раздел {}",
+                            sec.number.as_deref().unwrap_or(&sec.title)
+                        )),
+                    );
+                } else {
+                    rep.error(
+                        "section_total_mismatch",
+                        format!(
+                            "Итог раздела «{}» {} ≠ Σ позиций {:.2} (разница {:.2} руб.)",
+                            sec.title, t.value, computed, diff
+                        ),
+                        Some(format!(
+                            "Раздел {}",
+                            sec.number.as_deref().unwrap_or(&sec.title)
+                        )),
+                    );
+                }
             }
             rep.stats.section_totals_checked += 1;
         }

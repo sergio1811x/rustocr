@@ -1,10 +1,10 @@
 {
  "pages": 5,
  "sections": 10,
- "positions": 182,
+ "positions": 186,
  "resources": 0,
  "table_rows": 253,
- "unclassified_rows": 39,
+ "unclassified_rows": 34,
  "qty_price_checked": 129,
  "section_totals_checked": 10,
  "total": 5358904.13,
@@ -16,13 +16,9 @@
   "section_total_mismatch",
   "section_total_mismatch",
   "section_total_mismatch",
-  "section_total_mismatch",
-  "section_total_mismatch",
   "section_total_mismatch"
  ],
  "warnings": [
-  "auto_repair",
-  "auto_repair",
   "doc_total_excludes_sections",
   "unclassified_rows"
  ],
@@ -34,7 +30,7 @@
   },
   {
    "title": "ЗЕМЛЯНЫЕ РАБОТЫ (SRZD2)",
-   "positions": 7,
+   "positions": 8,
    "total": 209837.66
   },
   {
@@ -44,7 +40,7 @@
   },
   {
    "title": "КЛАДКА НЕСУЩИХ СТЕН, МОНТАЖ ПЕРЕМЫЧЕК, ВЕНТКАНАЛОВ, ВНУТР.ПЕ",
-   "positions": 45,
+   "positions": 46,
    "total": 1617553.1
   },
   {
@@ -63,13 +59,13 @@
    "total": 548449.36
   },
   {
-   "title": "Стоимость материалов, машин и",
+   "title": "КОМПЛЕКТАЦИЯ МОНТАЖ КРОВЕЛЬНОГО №1 БАЗОВАЯ ПОКРЫТИЯ \"КОРОБКА",
    "positions": 19,
    "total": 723018.63
   },
   {
    "title": "ОТДЕЛКА ВНЕШНИХ СТЕН и ЦОКОЛЯ (SRZD15)",
-   "positions": 26,
+   "positions": 28,
    "total": 1771852.5
   },
   {

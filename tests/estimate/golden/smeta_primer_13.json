@@ -1,12 +1,12 @@
 {
  "pages": 29,
- "sections": 10,
+ "sections": 13,
  "positions": 470,
  "resources": 7,
  "table_rows": 867,
  "unclassified_rows": 90,
  "qty_price_checked": 219,
- "section_totals_checked": 10,
+ "section_totals_checked": 13,
  "total": 3653728.0,
  "vat": null,
  "total_with_vat": null,
@@ -20,22 +20,34 @@
   "section_total_mismatch",
   "section_total_mismatch",
   "section_total_mismatch",
+  "section_total_mismatch",
+  "section_total_mismatch",
+  "section_total_mismatch",
   "section_total_mismatch"
  ],
  "warnings": [
-  "doc_total_indexed",
   "position_duplicate",
   "unclassified_rows"
  ],
  "sections_detail": [
   {
-   "title": "руб",
-   "positions": 145,
+   "title": "Деревянные конструкции",
+   "positions": 121,
+   "total": 862239.0
+  },
+  {
+   "title": "Бетонные и железобетонные конструкции",
+   "positions": 24,
    "total": 90183.0
   },
   {
    "title": "Полы",
-   "positions": 81,
+   "positions": 55,
+   "total": 556807.0
+  },
+  {
+   "title": "Изоляционные работы",
+   "positions": 26,
    "total": 870351.0
   },
   {
@@ -50,7 +62,12 @@
   },
   {
    "title": "Отделочные работы",
-   "positions": 96,
+   "positions": 70,
+   "total": 738589.0
+  },
+  {
+   "title": "Полы из керамических плиток",
+   "positions": 26,
    "total": 63813.0
   },
   {
@@ -65,17 +82,17 @@
   },
   {
    "title": "Металлические конструкции",
-   "positions": 8,
-   "total": 6304.0
-  },
-  {
-   "title": "Резерв средств на непредвиденные % 1.5 918",
-   "positions": 1,
+   "positions": 9,
    "total": 73289.0
   },
   {
    "title": "Устройство оснований",
-   "positions": 37,
+   "positions": 9,
+   "total": 4445.0
+  },
+  {
+   "title": "Вентиляционные работы",
+   "positions": 28,
    "total": 69233.0
   }
  ]

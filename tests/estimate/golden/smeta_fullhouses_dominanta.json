@@ -1,7 +1,7 @@
 {
  "pages": 3,
  "sections": 8,
- "positions": 151,
+ "positions": 152,
  "resources": 0,
  "table_rows": 168,
  "unclassified_rows": 5,
@@ -10,9 +10,7 @@
  "total": 10975506.0,
  "vat": null,
  "total_with_vat": null,
- "errors": [
-  "section_total_mismatch"
- ],
+ "errors": [],
  "warnings": [
   "doc_total_excludes_sections",
   "section_total_missing",
@@ -41,7 +39,7 @@
   },
   {
    "title": "Строительство 2го этажа",
-   "positions": 24,
+   "positions": 25,
    "total": 1630007.0
   },
   {

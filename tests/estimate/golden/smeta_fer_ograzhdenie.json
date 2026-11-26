@@ -4,7 +4,7 @@
  "positions": 70,
  "resources": 3,
  "table_rows": 109,
- "unclassified_rows": 22,
+ "unclassified_rows": 23,
  "qty_price_checked": 17,
  "section_totals_checked": 1,
  "total": 123867.12,
@@ -33,7 +33,7 @@
  ],
  "sections_detail": [
   {
-   "title": "(без разделов)",
+   "title": "(локальная сI мета)",
    "positions": 1,
    "total": null
   },

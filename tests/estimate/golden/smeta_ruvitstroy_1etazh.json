@@ -1,10 +1,10 @@
 {
  "pages": 5,
  "sections": 6,
- "positions": 137,
+ "positions": 138,
  "resources": 1,
  "table_rows": 181,
- "unclassified_rows": 37,
+ "unclassified_rows": 36,
  "qty_price_checked": 6,
  "section_totals_checked": 1,
  "total": 63655.0,
@@ -29,7 +29,7 @@
  ],
  "sections_detail": [
   {
-   "title": "фундамент",
+   "title": "Фундамент",
    "positions": 23,
    "total": null
   },
@@ -40,7 +40,7 @@
   },
   {
    "title": "Монолитные работы",
-   "positions": 23,
+   "positions": 24,
    "total": null
   },
   {

@@ -1,7 +1,7 @@
 {
  "pages": 7,
  "sections": 7,
- "positions": 286,
+ "positions": 287,
  "resources": 0,
  "table_rows": 388,
  "unclassified_rows": 50,
@@ -11,7 +11,6 @@
  "vat": null,
  "total_with_vat": null,
  "errors": [
-  "doc_total_mismatch",
   "section_total_mismatch",
   "section_total_mismatch",
   "section_total_mismatch",
@@ -20,13 +19,14 @@
   "section_total_mismatch"
  ],
  "warnings": [
+  "doc_total_excludes_sections",
   "section_total_missing",
   "unclassified_rows"
  ],
  "sections_detail": [
   {
-   "title": "(без разделов)",
-   "positions": 2,
+   "title": "Строительство жилого дома, общая площадь 191м²",
+   "positions": 3,
    "total": null
   },
   {

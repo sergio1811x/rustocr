@@ -614,6 +614,11 @@ fn is_intermediate_summary_text(lower: &str, lz: &str) -> bool {
         || lower.starts_with("индекс")
         || lower.contains("в том числе зарплата")
         || lower.starts_with("материалы в текущем")
+        // подытог колонок веб-смет (primer_smeta): «Итого работы +
+        // материалы: 15 152,48 6 708,90 21 861,38» в конце раздела —
+        // не итог раздела (за ним «Итого по разделу»), иначе затирает
+        // его и валидация падает
+        || (lz.contains("итого") && lz.contains("работыматериалы"))
         || (lz.starts_with("итого")
             && (lower.contains("с накладными")
                 || lower.contains("с индексацией")
@@ -647,6 +652,16 @@ fn meta_keyword_row(lower: &str) -> bool {
         "монтажных работ",
         "тыс. руб",
         "тыс.руб",
+        // шапка-расшифровка веб-смет (primer_smeta, PDFium): блок
+        // «Стоимость работ / материалов / Координация / Накладные и
+        // транспортные = Итого по смете» над таблицей — это итоги
+        // ДОКУМЕНТА, а не позиции первого раздела. «Сметная прибыль»
+        // сюда НЕ включена: в простых сметах без шапки таблицы секционные
+        // строки «Сметная прибыль 20 000» — ресурсы раздела, а не meta
+        "стоимость работ",
+        "стоимость материалов",
+        "координация",
+        "накладные и транспортные",
     ]
     .iter()
     .any(|k| lower.contains(k))
@@ -1149,6 +1164,19 @@ fn resource_kind(lower: &str) -> Option<ResourceKind> {
     if lower.contains("транспортные расходы") || lower.contains("перевозк") {
         return Some(ResourceKind::Transport);
     }
+    // сборы веб-смет в конце раздела (primer_smeta): «Организация работ
+    // согласно строительным технологиям и правилам: 2 623,37»,
+    // «Координация поставок материалов и комплектующих: 1 093,07»,
+    // «Технический надзор: 874,46» — иначе становятся позициями и
+    // ломают Σ раздела. ДО проверки «материалы»: «Координация поставок
+    // материалов…» содержит слово «материал»
+    if lower.contains("организация работ")
+        || lower.contains("координация")
+        || lower.contains("технический надзор")
+        || lower.contains("тех надзор")
+    {
+        return Some(ResourceKind::Overhead);
+    }
     if lower.contains("материалы") {
         return Some(ResourceKind::Material);
     }
@@ -1301,6 +1329,79 @@ fn bare_title(joined: &str) -> bool {
     title_like(joined) && !joined.trim().chars().any(|c| c.is_ascii_digit())
 }
 
+/// Голый заголовок ПОЛОШИРИННОЙ строки веб-смет (primer_smeta, PDFium).
+/// Особенности таких смет:
+///   • заголовки разделов ЦЕНТРИРОВАНЫ — первая ячейка col ≥ 3; строки
+///     продолжений позиций прижаты влево (col 0–2) — по X их различаем.
+///     Исключение: заголовки-группы влево («Временные здания и
+///     сооружения», «Прочие работы и затраты» в objektnaya_moyka) —
+///     они идут ПОСЛЕ итога, когда позиция закрыта; продолжения — при
+///     ОТКРЫТОЙ позиции. Прижатые строки разрешаем только без позиции;
+///   • названия содержат размеры («0,6 x 0,3м») и пояснения в скобках
+///     («Полы нижнего этажа - … 70мм (без террас)», 82 символа) — цифры в
+///     середине и скобки допустимы, лимит длины до 100;
+///   • строка данных всегда КОНЧАЕТСЯ суммой («… ман 1,00 1 500,00») —
+///     не passing;
+///   • метки шапки («Составлен(а) в текущих ценах…») отсечены по словарю
+///     meta_keyword_row.
+/// Табличные (columnar) строки проверяем строго: title_like без цифр.
+fn bare_title_wide(row: &DocRow, joined: &str, position_open: bool) -> bool {
+    let t = joined.trim();
+    if row.columnar {
+        return title_like(t) && !t.chars().any(|c| c.is_ascii_digit());
+    }
+    let Some((first_col, _, _)) = row.cells.first() else {
+        return false;
+    };
+    if *first_col < 3 {
+        if position_open {
+            return false; // продолжение названия позиции, не заголовок
+        }
+        // прижатая строка вне позиции — только БЕЗ цифр (строгий вариант)
+        return title_like(t) && !t.chars().any(|c| c.is_ascii_digit());
+    }
+    if !(4..=100).contains(&t.chars().count()) {
+        return false;
+    }
+    if t.contains(':') || t.contains('№') || t.contains('%') {
+        return false;
+    }
+    if t.contains('@') || t.contains("www") || t.contains(".ru") || t.contains(".com") {
+        return false;
+    }
+    if t.starts_with('-') || t.starts_with('–') || t.starts_with('—') {
+        return false;
+    }
+    if t.chars().filter(|c| c.is_alphabetic()).count() < 3 {
+        return false;
+    }
+    if is_unit(t) {
+        return false;
+    }
+    if t.chars().next().map(|c| c.is_lowercase()).unwrap_or(false) {
+        return false;
+    }
+    // логотипы латиницей капсом
+    if t
+        .chars()
+        .filter(|c| c.is_alphabetic())
+        .all(|c| c.is_ascii_alphabetic() && c.is_uppercase())
+    {
+        return false;
+    }
+    let lower = t.to_lowercase();
+    if new_doc_header(&lower)
+        || meta_keyword_row(&lower)
+        || totals_kind_text(&lower).is_some()
+        || meta_field(&lower).is_some()
+    {
+        return false;
+    }
+    // строка данных кончается числом-суммой
+    let last = t.rsplit(' ').next().unwrap_or("");
+    parse_number(last).is_none()
+}
+
 
 
 /// Заголовок НОВОГО документа в составном файле (ЛСР + ОСР + приложение):
@@ -1322,7 +1423,10 @@ fn new_doc_header(lower: &str) -> bool {
 fn title_like(t: &str) -> bool {
     let t = t.trim();
     let n = t.chars().count();
-    if !(3..=60).contains(&n) {
+    // 80 = лимит section_title_ok: заголовки разделов веб-смет длинные
+    // («Фундамент - монолитная ЖБ лента 0,6 x 0,3м - под дом и 0,6 х
+    // 0,2м - под террасы» = 79) — лимит 60 отрезал их в разделы-фантомы
+    if !(3..=80).contains(&n) {
         return false;
     }
     if t.contains(':') || t.contains('(') || t.contains('№') || t.contains('%') {
@@ -1354,6 +1458,11 @@ fn title_like(t: &str) -> bool {
         return false;
     }
     let lower = t.to_lowercase();
+    // название ДОКУМЕНТА («СМЕТНЫЙ РАСЧЕТ НА СТРОИТЕЛЬСТВО…», 71 символ)
+    // с лимитом 80 стало бы первым фантомным «разделом» веб-сметы
+    if new_doc_header(&lower) {
+        return false;
+    }
     if totals_kind_text(&lower).is_some() || meta_field(&lower).is_some() {
         return false;
     }
@@ -1365,7 +1474,10 @@ fn title_like(t: &str) -> bool {
 /// допустимы, отдельные числа — нет.
 fn section_title_ok(title: &str) -> bool {
     let t = title.trim();
-    if !(4..=80).contains(&t.chars().count()) {
+    // 100 = лимит title_like/bare_title_wide: заголовки разделов веб-смет
+    // («Полы нижнего этажа - цементно-песчаная стяжка по грунту толщиной
+    // 70мм (без террас)») длиннее 80
+    if !(4..=100).contains(&t.chars().count()) {
         return false;
     }
     if t.contains(':') || t.contains('@') || t.contains("www") {
@@ -1919,8 +2031,13 @@ struct Parser {
     after_vat: bool,
     /// «Примечания:» прошли — дальше только текст, не смета
     in_notes: bool,
-    /// голый номер раздела («2» отдельной строкой) — название ждём ниже
-    pending_section_no: Option<u32>,
+    /// голый номер раздела («2» отдельной строкой) — название ждём ниже.
+    /// Пара (номер, страница): номер страницы-колонтитула внизу листа —
+    /// тоже голое целое ПОСЛЕ итога раздела; настоящий номер раздела и его
+    /// название живут на ОДНОЙ странице, колонтитул с названием следующей
+    /// — нет (primer_smeta: «2» внизу листа + «Доставка пенополистирола
+    /// ман 1,00 1 500,00…» стало разделом №2 с числами в названии)
+    pending_section_no: Option<(u32, usize)>,
     /// висящее название позиции (newizba): не-табличная строка с заглавной
     /// («Бетонирование монолитных площадочных фундаментов из»), чьи данные
     /// придут СЛЕДУЮЩЕЙ табличной строкой из единицы и чисел
@@ -2032,9 +2149,14 @@ impl Parser {
             return;
         }
         // отложенный номер раздела («2» отдельной строкой): эта строка —
-        // название («Строительство 1го этажа»)
-        if let Some(n) = self.pending_section_no.take() {
-            if section_title_ok(&joined) {
+        // название («Строительство 1го этажа»). Название обязано жить на
+        // ТОЙ ЖЕ странице, что и номер (колонтитул «2» внизу листа и
+        // первая строка следующей — не пара), и не иметь числовых ячеек
+        if let Some((n, ppage)) = self.pending_section_no.take() {
+            if ppage == row.page
+                && row.numbers().is_empty()
+                && section_title_ok(&joined)
+            {
                 dtag("раздел-номер", &joined);
                 self.start_section(Some(n.to_string()), joined.trim().to_string(), false);
                 self.after_total = false;
@@ -2053,8 +2175,12 @@ impl Parser {
             }
             if self.after_total {
                 if let Some(n) = lone_int(&row) {
-                    self.pending_section_no = Some(n);
-                    self.after_total = false;
+                    self.pending_section_no = Some((n, row.page));
+                    // after_total НЕ гасим: если «N» — колонтитул страницы
+                    // (страница сменится и pending сбросится), следующий
+                    // полноширинный заголовок раздела всё равно должен
+                    // открыться через ветку «раздел-голый» (primer_smeta:
+                    // «4» внизу листа + «Полы нижнего этажа…» на следующей)
                     dtag("раздел-номер", &joined);
                     return;
                 }
@@ -2130,10 +2256,15 @@ impl Parser {
             // по видам работ (sm_id: «Строительные металлические
             // конструкции» между «Полы 71893» и «Теплоизоляционные
             // работы 116720»): раздел из них — фантом, а строки сводки
-            // после него становятся позициями. Оставляем в хвосте
-            if self.after_total
+            // после него становятся позициями. Оставляем в хвосте.
+            // Полноширинные заголовки веб-смет (primer_smeta) содержат
+            // размеры («Фундамент - монолитная ЖБ лента 0,6 x 0,3м - под
+            // дом и 0,6 х 0,2м - под террасы») — цифры в СЕРЕДИНЕ
+            // названия допустимы, если строка не кончается числом
+            // (данные-строки всегда кончаются суммой)
+            if (self.after_total || !self.saw_section)
                 && !self.in_summary_tail
-                && bare_title(&joined)
+                && bare_title_wide(&row, &joined, self.cur_position.is_some())
             {
                 dtag("раздел-голый", &joined);
                 self.start_section(None, joined.trim().to_string(), false);
@@ -2297,8 +2428,11 @@ impl Parser {
         }
 
         // 1а) отложенный номер раздела: эта строка — название
-        if let Some(n) = self.pending_section_no.take() {
-            if section_title_ok(&joined) {
+        if let Some((n, ppage)) = self.pending_section_no.take() {
+            if ppage == row.page
+                && row.numbers().is_empty()
+                && section_title_ok(&joined)
+            {
                 dtag("раздел-номер", &joined);
                 self.start_section(Some(n.to_string()), joined.trim().to_string(), false);
                 self.after_total = false;
@@ -2322,6 +2456,12 @@ impl Parser {
         if is_header_row(&row) {
             self.saw_header_row = true;
             self.learn_roles(&row);
+            // шапка таблицы ПОСЛЕ «Итого по смете:» — это итог в ШАПКЕ
+            // документа (primer_smeta: «Итого по смете: 11 433 699,39»
+            // над таблицей), а не конец: таблица продолжается, хвост
+            // сводки не может быть до шапки — гасим, иначе все позиции
+            // документа уходят в «хвост-сводки»
+            self.in_summary_tail = false;
             return;
         }
 
